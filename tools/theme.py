@@ -99,3 +99,5 @@ for a_, b_ in [
     js = js.replace(a_, b_, 1)
 for s in SONGS:
     s['data']['lib'] = s['lib']
+for s in SONGS:
+    s['defaultStyle'] = 'orig'   # every piece opens with the composer's own left hand
