@@ -1,0 +1,900 @@
+<meta charset="utf-8">
+<title>Clair de Lune Chord Trainer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&family=Instrument+Sans:wght@400;500;600&family=Noto+Music&display=swap">
+<style>
+/* Layout: a "music stand" — chord card + controls above a falling-notes piano, then the bar-by-bar chord map. */
+:root {
+  --bg: #F1F0F6; --surface: #FFFFFF; --ink: #1C1B2E; --muted: #5C5A76; --line: #D8D6E4;
+  --melody: #A8721A; --melody-soft: #F3E3C0; --chord: #2C6590; --chord-soft: #D3E3F0; --bass: #1B4468;
+  --key-white: #FCFCFE; --key-black: #26253C; --roll-bg: #E8E7F0; --grid: #D2D0E0; --on-accent: #FFFFFF;
+  --font-display: "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
+  --font-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E0F1E; --surface: #171931; --ink: #ECEAF6; --muted: #A2A0C0; --line: #2C2E4C;
+  --melody: #E8BA5C; --melody-soft: #3F3218; --chord: #7DB3DC; --chord-soft: #1C3451; --bass: #B4D4EE;
+  --key-white: #E6E5EF; --key-black: #14132A; --roll-bg: #10122A; --grid: #23264A; --on-accent: #0E0F1E;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0E0F1E; --surface: #171931; --ink: #ECEAF6; --muted: #A2A0C0; --line: #2C2E4C;
+  --melody: #E8BA5C; --melody-soft: #3F3218; --chord: #7DB3DC; --chord-soft: #1C3451; --bass: #B4D4EE;
+  --key-white: #E6E5EF; --key-black: #14132A; --roll-bg: #10122A; --grid: #23264A; --on-accent: #0E0F1E;
+  color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 56px; display: grid; gap: 22px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 500; text-wrap: balance; margin: 0; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+[hidden] { display: none !important; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--chord); outline-offset: 2px; }
+
+/* Header */
+.top { display: grid; gap: 4px; }
+.top h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.08; letter-spacing: -.01em; }
+.top h1 em { font-style: italic; color: var(--melody); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 14px; }
+.meta b { color: var(--ink); font-weight: 600; }
+.intro { max-width: 64ch; margin: 4px 0 0; color: var(--muted); }
+
+/* Stage */
+.stage { display: grid; gap: 14px; }
+.board { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.6fr); gap: 14px; }
+@media (max-width: 820px) { .board { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; min-width: 0; }
+
+.now { display: grid; gap: 8px; align-content: start; }
+.now-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.now-sym { font-family: var(--font-display); font-size: clamp(46px, 7vw, 64px); line-height: .9; color: var(--chord); }
+.now-rom { font-family: var(--font-display); font-style: italic; font-size: 24px; color: var(--muted); }
+.tones { display: flex; flex-wrap: wrap; gap: 6px; }
+.tone { padding: 3px 10px; border-radius: 999px; background: var(--chord-soft); color: var(--ink); font-weight: 600; font-size: 14px; }
+.tone.root { background: var(--chord); color: var(--on-accent); }
+.next { color: var(--muted); font-size: 14px; }
+.next b { color: var(--ink); font-family: var(--font-display); font-size: 18px; font-weight: 600; }
+.counter { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.counter .pos { font-size: 14px; color: var(--muted); min-width: 120px; }
+.counter .pos b { color: var(--ink); }
+.meter { display: flex; gap: 8px; }
+.meter .beat { display: flex; gap: 3px; padding: 4px 5px; border-radius: 6px; background: var(--bg); }
+.meter i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: block; }
+.meter i.big { width: 11px; height: 11px; margin-top: -1px; }
+.meter i.on { background: var(--melody); }
+.sec-tag { font-size: 13px; color: var(--muted); }
+.sec-tag b { font-family: var(--font-display); color: var(--ink); font-size: 16px; }
+
+.controls { display: grid; gap: 10px; align-content: start; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.btn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 8px 16px; cursor: pointer; font-weight: 600; }
+.btn:hover { border-color: var(--chord); }
+.btn.primary { background: var(--chord); color: var(--on-accent); border-color: var(--chord); min-width: 108px; }
+.field { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.field select, .field input[type=number] { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.field input[type=number] { width: 4.2em; }
+.tempo { flex: 1 1 260px; display: grid; gap: 4px; }
+.tempo label { font-size: 14px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.tempo label b { color: var(--ink); font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--chord); }
+.switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; user-select: none; }
+.switch input { width: 18px; height: 18px; accent-color: var(--chord); }
+.swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+kbd { font-family: var(--font-ui); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
+
+.piano { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.piano-scroll { overflow-x: auto; }
+.piano-inner { min-width: 760px; }
+.piano canvas { display: block; width: 100%; }
+#roll { height: 180px; }
+#keys { height: 96px; cursor: pointer; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.strip { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+.strip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.strip-bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); gap: 8px; overflow-x: auto; position: relative; padding: 2px; }
+.strip .bar { background: var(--bg); padding: 5px 8px 7px; gap: 4px; }
+.strip .chip { padding: 5px 2px 4px; }
+
+/* Chord map */
+.map { display: grid; gap: 22px; }
+.map-head { display: grid; gap: 6px; }
+.map-head h2 { font-size: clamp(28px, 4vw, 38px); }
+.map-head p { margin: 0; max-width: 70ch; color: var(--muted); }
+.section { display: grid; gap: 10px; }
+.section-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.section-head h3 { font-size: 26px; min-width: 2.2em; }
+.section-head .what { color: var(--muted); max-width: 72ch; font-size: 14px; }
+.section-head .loopit { margin-left: auto; font-size: 13px; padding: 4px 12px; }
+.bars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 760px) { .bars { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bar { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 6px; min-width: 0; }
+.bar.wide { grid-column: span 2; }
+.bar.cur { border-color: var(--melody); box-shadow: 0 0 0 1px var(--melody); }
+.bar-n { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar-n button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 2px; font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
+.chips { display: flex; gap: 3px; }
+.chip { min-width: 0; border: 0; border-radius: 6px; background: var(--chord-soft); color: var(--ink); padding: 8px 2px 6px; cursor: pointer; display: grid; justify-items: center; gap: 1px; overflow: hidden; }
+.chip:hover { outline: 1px solid var(--chord); }
+.chip .s { font-family: var(--font-display); font-weight: 600; font-size: 15px; line-height: 1.1; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+.tone.bassnote { background: none; border: 1px solid var(--line); color: var(--muted); }
+.chip .ro { font-size: 11px; color: var(--muted); white-space: nowrap; font-style: italic; }
+.stack { display: grid; gap: 2px; min-width: 0; }
+.chip.tiny { padding: 2px; }
+.chip.tiny .s { font-size: 13px; }
+.chip.tiny .ro { display: none; }
+.chip.cur { background: var(--chord); color: var(--on-accent); }
+.chip.cur .ro { color: var(--on-accent); opacity: .85; }
+.beats { display: grid; grid-template-columns: repeat(3, 1fr); font-size: 10px; color: var(--muted); letter-spacing: .04em; }
+.beats span { border-left: 1px solid var(--line); padding-left: 3px; }
+
+/* Learn */
+.learn { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 820px) { .learn { grid-template-columns: minmax(0, 1fr); } }
+.learn h2 { font-size: 26px; margin-bottom: 10px; }
+.learn ol { margin: 0; padding-left: 1.3em; display: grid; gap: 10px; }
+.learn li { max-width: 62ch; }
+.learn li b { font-weight: 600; }
+.glossary { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; margin: 0; font-size: 14px; }
+.glossary dt { font-family: var(--font-display); font-weight: 600; font-size: 17px; }
+.glossary dd { margin: 0; color: var(--muted); }
+footer { font-size: 13px; color: var(--muted); max-width: 90ch; }
+footer a { color: var(--chord); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+
+/* flatter control panel */
+.board.card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 8px 14px; }
+.nowbar { display: flex; align-items: center; gap: 6px 18px; flex-wrap: wrap; }
+.nowbar .now-sym { font-size: clamp(30px, 4.4vw, 40px); line-height: 1; min-width: 4.6em; }
+.nowbar .now-rom { font-size: 20px; min-width: 2.6em; }
+.nowbar .tones { min-width: 0; }
+.nowbar .tone { padding: 2px 9px; font-size: 13px; }
+.nowbar .meter .beat { padding: 3px 4px; }
+.nowbar .next { min-width: 150px; font-size: 13px; }
+.nowbar .counter { gap: 10px; }
+.nowbar .counter .pos { min-width: 104px; font-size: 13px; }
+.nowbar .repeat { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ctrlbar { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 8px; }
+.ctrlbar .btn { padding: 6px 14px; }
+.ctrlbar .btn.primary { min-width: 96px; }
+.ctrlbar .btn.icon { padding: 6px 11px; }
+.ctrlbar select { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; max-width: 150px; }
+.ctrlbar .speed { flex: 1 1 150px; }
+.ctrlbar .speed b { color: var(--ink); font-variant-numeric: tabular-nums; min-width: 2.2em; }
+.ctrlbar .speed input { flex: 1; min-width: 80px; }
+/* foldable chord bar and sheet */
+.fold { border-bottom: 1px solid var(--line); }
+.fold summary { cursor: pointer; padding: 7px 12px; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; font-size: 13px; color: var(--muted); list-style: none; user-select: none; }
+.fold summary::-webkit-details-marker { display: none; }
+.fold summary::before { content: "▸"; color: var(--muted); width: 1em; }
+.fold[open] summary::before { content: "▾"; }
+.fold-title { font-weight: 600; color: var(--ink); }
+.fold-note { margin-left: auto; }
+.fold .strip-bars { padding: 0 12px 10px; }
+.fold .bar { background: var(--bg); padding: 5px 8px 7px; gap: 4px; }
+.fold .chip { padding: 5px 2px 4px; }
+#sheet { display: block; width: 100%; height: 184px; }
+#roll { height: 150px; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Claude Debussy · Suite bergamasque, published 1905</div>
+    <h1>Clair de <em>Lune</em></h1>
+    <div class="meta"><span><b>Key</b> D♭ major</span><span><b>Time</b> 9/8, three beats of three</span><span><b>Andante</b> très expressif</span><span><b>Length</b> 72 bars</span></div>
+  </header>
+
+  <section class="stage" aria-label="Player">
+    <div class="board card">
+      <div class="nowbar">
+        <div class="now-sym" id="nowSym">D♭</div>
+        <div class="now-rom" id="nowRom">I</div>
+        <div class="tones" id="nowTones"></div>
+        <div class="next" id="nextChord"></div>
+        <div class="counter">
+          <div class="pos" id="posText"></div>
+          <div class="meter" id="meter" aria-hidden="true"></div>
+        </div>
+        <div class="sec-tag" id="secTag" hidden></div>
+        <div class="repeat">
+          <label class="field" for="loopMode">Repeat
+            <select id="loopMode">
+              <option value="off">Off</option>
+              <option value="bar">This bar</option>
+              <option value="section">This section</option>
+              <option value="range">Bars from–to</option>
+            </select>
+          </label>
+          <span class="field" id="rangeBox" hidden>
+            <input type="number" id="loopFrom" min="1" max="72" value="1" aria-label="Loop from bar">to
+            <input type="number" id="loopTo" min="1" max="72" value="4" aria-label="Loop to bar">
+          </span>
+        </div>
+      </div>
+      <div class="ctrlbar">
+        <button class="btn primary" id="playBtn" type="button">▶ Play</button>
+        <button class="btn icon" id="restartBtn" type="button" aria-label="From the top" title="From the top">⟲</button>
+        <button class="btn icon" id="prevBar" type="button" aria-label="Previous bar" title="Previous bar">◀</button>
+        <button class="btn icon" id="nextBar" type="button" aria-label="Next bar" title="Next bar">▶</button>
+        <label class="field speed" for="tempo">Speed <b id="tempoVal">90</b>
+          <input type="range" id="tempo" min="36" max="150" value="90" step="2">
+        </label>
+        <label class="switch"><input type="checkbox" id="melOn" checked><span class="swatch" style="background:var(--melody)"></span>Melody</label>
+        <label class="switch"><input type="checkbox" id="accOn" checked><span class="swatch" style="background:var(--chord)"></span>Chords</label>
+        <select id="style" aria-label="Chord style" title="Chord style">
+          <option value="block" selected>Block chords</option>
+          <option value="pattern">Bass, chord, chord</option>
+          <option value="orig">Debussy's left hand</option>
+        </select>
+        <select id="melTone" aria-label="Melody sound" title="Melody sound">
+          <option value="warm" selected>Warm piano</option>
+          <option value="felt">Soft felt piano</option>
+          <option value="bright">Bright piano</option>
+        </select>
+        <label class="field" for="melVol">Volume
+          <input type="range" id="melVol" min="0" max="150" value="90" style="width:70px">
+        </label>
+      </div>
+    </div>
+
+    <div class="piano">
+      <details class="fold" id="foldChords" open>
+        <summary><span class="fold-title">Chords</span><span class="sec-tag" id="stripTitle"></span><span class="fold-note" id="stripNext"></span></summary>
+        <div class="strip-bars" id="stripBars"></div>
+      </details>
+      <details class="fold" id="foldSheet" open>
+        <summary><span class="fold-title">Sheet music</span><span class="fold-note">simplified: no rests or ties</span></summary>
+        <canvas id="sheet" aria-label="Scrolling sheet music"></canvas>
+      </details>
+      <div class="piano-scroll" id="pianoScroll">
+        <div class="piano-inner">
+          <canvas id="roll" aria-label="Falling notes"></canvas>
+          <canvas id="keys" aria-label="Piano keyboard"></canvas>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--melody)"></span>Melody, right hand</span>
+        <span><span class="swatch" style="background:var(--chord)"></span>Chord, left hand</span>
+        <span><span class="swatch" style="background:var(--bass)"></span>Bass note</span>
+        <span>Outlined keys = notes of the current chord</span>
+        <span><kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> move a bar</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="map" aria-label="Chord map">
+    <div class="map-head">
+      <div class="eyebrow">Bar by bar</div>
+      <h2>The chord map</h2>
+      <p>The strip above the piano shows the section being played; this is the whole piece. Each card is one bar: three beats, each three eighth notes long (count “1-and-a, 2-and-a, 3-and-a”). A chord's width shows how long it lasts. Tap a chord to hear it and jump there; tap “play” on a card to start from that bar.</p>
+    </div>
+    <div id="map"></div>
+  </section>
+
+  <section class="learn">
+    <div class="card">
+      <h2>How to practise it</h2>
+      <ol>
+        <li><b>Start with section C, bars 27–36.</b> It is the part everyone knows, and each bar is the same three chords: D♭, F minor, D♭ minor. Loop it with Melody off and Block chords on.</li>
+        <li><b>Then the opening, bars 1–8.</b> The right hand is only two notes at a time. In the left hand, follow the bass note after the slash: it steps down one note per bar.</li>
+        <li><b>Add the melody slowly.</b> Speed 50–60, loop two bars. Follow the gold notes as they reach the keys. Many are held a long time, so there is room to think.</li>
+        <li><b>Listen to Debussy's own left hand.</b> Switch the chord style to hear how he spreads each chord into a wave of single notes. It is the same harmony you already know.</li>
+        <li><b>Take section B in two halves.</b> Bars 15–18 sit on E♭ minor. In bars 19–24 only the bass changes much: A♭, A, B♭, C, D♭, E♭.</li>
+        <li><b>Leave section D for last.</b> It is written in sharps and moves fastest. The chords are close cousins of the ones before: C♯ minor is D♭ minor under another name.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>Reading the symbols</h2>
+      <dl class="glossary">
+        <dt>D♭/F</dt><dd>A slash chord: play a D♭ chord with F as the lowest note. The letter after the slash is the bass.</dd>
+        <dt>E♭m7</dt><dd>A minor seventh: minor triad plus a minor seventh (E♭ – G♭ – B♭ – D♭). The soft, hazy sound of this piece.</dd>
+        <dt>A♭7</dt><dd>A dominant seventh. It wants to resolve to D♭. A♭7sus swaps the third (C) for the fourth (D♭) first.</dd>
+        <dt>C°7</dt><dd>A diminished seventh: four notes stacked in minor thirds.</dd>
+        <dt>Cm7♭5</dt><dd>A half-diminished chord: a minor seventh chord with the fifth lowered.</dd>
+        <dt>A♭+</dt><dd>An augmented triad: a major triad with the fifth raised a half step.</dd>
+        <dt>I, V⁷, ii⁷</dt><dd>Roman numerals count chords from D♭ (from E in bars 37–42). Upper case is major, lower case is minor.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <footer>
+    The chord names are my own reading of the score, simplified to chords you can play; Debussy's harmony often allows more than one name, so treat them as a guide. Melody and left hand are taken from the public-domain E. Fromont 1905 edition as typeset by the <a href="https://www.mutopiaproject.org" target="_blank" rel="noopener">Mutopia Project</a> (Keith OHara, public domain), with grace notes left out. Sound is a synthesised piano made in your browser.
+  </footer>
+</div>
+
+<script>
+const D = {"bars":[{"n":1,"start":0,"len":9,"chords":[["D♭","I",0,9]]},{"n":2,"start":9,"len":9,"chords":[["C°7/G♭","vii°⁷",0,9]]},{"n":3,"start":18,"len":9,"chords":[["D♭/F","I",0,9]]},{"n":4,"start":27,"len":9,"chords":[["A♭7/E♭","V⁷",0,9]]},{"n":5,"start":36,"len":9,"chords":[["E♭m7/D♭","ii⁷",0,6],["A♭7/C","V⁷",6,3]]},{"n":6,"start":45,"len":9,"chords":[["E♭m7/B♭","ii⁷",0,6],["F7/A","V⁷/vi",6,3]]},{"n":7,"start":54,"len":9,"chords":[["B♭m7/A♭","vi⁷",0,6],["G♭","IV",6,3]]},{"n":8,"start":63,"len":9,"chords":[["B♭m7/F","vi⁷",0,6],["A♭7","V⁷",6,3]]},{"n":9,"start":72,"len":9,"chords":[["D♭","I",0,9]]},{"n":10,"start":81,"len":9,"chords":[["G♭","IV",0,9]]},{"n":11,"start":90,"len":9,"chords":[["D♭/F","I",0,9]]},{"n":12,"start":99,"len":9,"chords":[["G♭","IV",0,9]]},{"n":13,"start":108,"len":9,"chords":[["D♭7/A♭","V⁷/IV",0,9]]},{"n":14,"start":117,"len":9,"chords":[["B♭m","vi",0,9]]},{"n":15,"start":126,"len":9,"chords":[["E♭m7","ii⁷",0,9]]},{"n":16,"start":135,"len":9,"chords":[["G♭/B♭","IV",0,9]]},{"n":17,"start":144,"len":9,"chords":[["E♭m7","ii⁷",0,9]]},{"n":18,"start":153,"len":9,"chords":[["E♭m7/B♭","ii⁷",0,9]]},{"n":19,"start":162,"len":9,"chords":[["A♭7","V⁷",0,9]]},{"n":20,"start":171,"len":9,"chords":[["A°7","vii°⁷/vi",0,9]]},{"n":21,"start":180,"len":9,"chords":[["G♭/B♭","IV",0,9]]},{"n":22,"start":189,"len":9,"chords":[["Cm7♭5","vii∅⁷",0,9]]},{"n":23,"start":198,"len":9,"chords":[["G♭/D♭","IV",0,9]]},{"n":24,"start":207,"len":9,"chords":[["E♭m7","ii⁷",0,9]]},{"n":25,"start":216,"len":9,"chords":[["D♭/F","I",0,6],["B♭m7♭5/F♭","vi∅⁷",6,3]]},{"n":26,"start":225,"len":9,"chords":[["A♭7sus/E♭","V⁷sus",0,6],["A♭7","V⁷",6,3]]},{"n":27,"start":234,"len":9,"chords":[["D♭","I",0,3],["Fm","iii",3,3],["D♭m7/A♭","i⁷",6,3]]},{"n":28,"start":243,"len":9,"chords":[["D♭","I",0,3],["Fm","iii",3,3],["D♭m7/A♭","i⁷",6,3]]},{"n":29,"start":252,"len":9,"chords":[["D♭","I",0,9]]},{"n":30,"start":261,"len":9,"chords":[["E♭7","V⁷/V",0,9]]},{"n":31,"start":270,"len":9,"chords":[["A♭7","V⁷",0,3],["G♭","IV",3,3],["Fm","iii",6,3]]},{"n":32,"start":279,"len":9,"chords":[["A♭7","V⁷",0,3],["G♭","IV",3,3],["Fm","iii",6,3]]},{"n":33,"start":288,"len":9,"chords":[["E♭m","ii",0,9]]},{"n":34,"start":297,"len":9,"chords":[["B♭+/D","V⁺/ii",0,3],["E♭m","ii",3,3],["A♭+","V⁺",6,3]]},{"n":35,"start":306,"len":9,"chords":[["D♭","I",0,3],["Fm/A♭","iii",3,3],["D♭m7/A♭","i⁷",6,3]]},{"n":36,"start":315,"len":9,"chords":[["D♭","I",0,3],["Fm/A♭","iii",3,3],["D♭m7/A♭","i⁷",6,3]]},{"n":37,"start":324,"len":9,"chords":[["C♯m7","vi⁷",0,9]]},{"n":38,"start":333,"len":9,"chords":[["Amaj7/G♯","IV⁷",0,3],["F♯m","ii",3,6]]},{"n":39,"start":342,"len":9,"chords":[["F♯m7/E","ii⁷",0,3],["D♯m7♭5","vii∅⁷",3,3],["A/C♯","IV",6,3]]},{"n":40,"start":351,"len":9,"chords":[["B7","V⁷",0,3],["F♯m7/A","ii⁷",3,3],["C♯m/G♯","vi",6,3]]},{"n":41,"start":360,"len":9,"chords":[["F♯m7","ii⁷",0,9]]},{"n":42,"start":369,"len":9,"chords":[["F♯m7","ii⁷",0,9]]},{"n":43,"start":378,"len":9,"chords":[["A♭7sus","V⁷sus",0,6],["A♭7","V⁷",6,3]]},{"n":44,"start":387,"len":9,"chords":[["A♭7sus","V⁷sus",0,6],["A♭7","V⁷",6,3]]},{"n":45,"start":396,"len":9,"chords":[["E♭m7","ii⁷",0,9]]},{"n":46,"start":405,"len":9,"chords":[["E♭m7","ii⁷",0,9]]},{"n":47,"start":414,"len":9,"chords":[["E♭m7/G♭","ii⁷",0,6],["Cm7♭5","vii∅⁷",6,3]]},{"n":48,"start":423,"len":9,"chords":[["E♭m7/G♭","ii⁷",0,6],["Cm7♭5","vii∅⁷",6,3]]},{"n":49,"start":432,"len":9,"chords":[["E♭m7/G♭","ii⁷",0,9]]},{"n":50,"start":441,"len":9,"chords":[["E♭m7♭5/G♭","ii∅⁷",0,9]]},{"n":51,"start":450,"len":9,"chords":[["D♭/F","I",0,9]]},{"n":52,"start":459,"len":9,"chords":[["F7","V⁷/vi",0,9]]},{"n":53,"start":468,"len":9,"chords":[["B♭m/F","vi",0,9]]},{"n":54,"start":477,"len":9,"chords":[["A♭7/E♭","V⁷",0,9]]},{"n":55,"start":486,"len":9,"chords":[["E♭m7/D♭","ii⁷",0,6],["Fm7/C","iii⁷",6,3]]},{"n":56,"start":495,"len":9,"chords":[["Fm7/C","iii⁷",0,3],["Cm7♭5","vii∅⁷",3,3],["F7","V⁷/vi",6,3]]},{"n":57,"start":504,"len":9,"chords":[["B♭m7/A♭","vi⁷",0,6],["G♭","IV",6,3]]},{"n":58,"start":513,"len":9,"chords":[["B♭m7/F","vi⁷",0,6],["A♭7","V⁷",6,3]]},{"n":59,"start":522,"len":9,"chords":[["D♭","I",0,3],["D♭7/C♭","V⁷/IV",3,6]]},{"n":60,"start":531,"len":9,"chords":[["G♭","IV",0,9]]},{"n":61,"start":540,"len":9,"chords":[["D♭/A♭","I",0,3],["D♭7/A♭","V⁷/IV",3,6]]},{"n":62,"start":549,"len":9,"chords":[["B♭m","vi",0,9]]},{"n":63,"start":558,"len":9,"chords":[["D♭/F","I",0,9]]},{"n":64,"start":567,"len":9,"chords":[["E♭m7","ii⁷",0,9]]},{"n":65,"start":576,"len":9,"chords":[["A♭7","V⁷",0,9]]},{"n":66,"start":585,"len":9,"chords":[["D♭","I",0,3],["Fm","iii",3,3],["D♭","I",6,3]]},{"n":67,"start":594,"len":9,"chords":[["Fm","iii",0,3],["D♭m/A♭","i",3,6]]},{"n":68,"start":603,"len":9,"chords":[["D♭","I",0,3],["Fm","iii",3,3],["D♭","I",6,3]]},{"n":69,"start":612,"len":9,"chords":[["Fm","iii",0,3],["D♭m/A♭","i",3,6]]},{"n":70,"start":621,"len":9,"chords":[["D♭m/A♭","i",0,9]]},{"n":71,"start":630,"len":9,"chords":[["D♭","I",0,9]]},{"n":72,"start":639,"len":9,"chords":[["D♭","I",0,9]]}],"rh":[[2.0,4.0,[77,80]],[6.0,4.0,[73,77]],[10.0,1.0,[72,75]],[11.0,1.0,[73,77]],[12.0,7.0,[72,75]],[19.0,1.0,[70,73]],[20.0,1.0,[72,75]],[21.0,1.5,[73]],[21.0,7.0,[70]],[22.5,3.0,[77]],[25.5,2.5,[73]],[28.0,1.0,[68,72]],[29.0,1.0,[70,73]],[30.0,6.0,[68]],[30.0,7.0,[72]],[36.0,6.0,[66]],[37.0,1.0,[70]],[38.0,1.0,[72]],[39.0,1.0,[70]],[40.0,1.0,[75]],[41.0,1.0,[70]],[42.0,1.0,[68]],[42.0,3.0,[66]],[43.0,1.0,[70]],[44.0,2.0,[68]],[45.0,6.0,[63]],[46.0,1.0,[66]],[47.0,1.0,[68]],[48.0,3.0,[66]],[51.0,3.0,[63]],[51.0,4.0,[65]],[54.0,9.0,[61]],[55.0,1.0,[65]],[56.0,1.0,[66]],[57.0,1.0,[65]],[58.0,1.0,[70]],[59.0,1.0,[65]],[60.0,1.0,[63]],[61.0,1.0,[65]],[62.0,2.0,[63]],[63.0,6.0,[58]],[64.0,1.0,[61]],[65.0,1.0,[63]],[66.0,3.0,[61]],[69.0,3.0,[56,60]],[73.0,1.0,[53,56]],[73.0,2.0,[53,56]],[75.0,3.0,[77,80]],[78.0,4.0,[73,77]],[82.0,1.0,[75]],[82.0,8.0,[66,70]],[83.0,1.0,[77]],[84.0,7.0,[75]],[91.0,1.0,[61,73]],[91.0,2.0,[68]],[92.0,1.0,[63,75]],[93.0,3.0,[68,73,80]],[96.0,3.0,[65,73]],[96.0,4.0,[77]],[100.0,1.0,[75]],[100.0,8.0,[66,70]],[101.0,1.0,[77]],[102.0,3.0,[75]],[105.0,4.0,[73]],[109.0,1.0,[61,73]],[109.0,2.0,[68]],[110.0,1.0,[63,75]],[111.0,1.5,[70,82]],[111.0,6.0,[77]],[112.5,3.0,[68,80]],[115.5,1.5,[65,77]],[117.0,1.0,[77]],[118.0,1.0,[75]],[118.0,8.0,[65,70]],[119.0,1.0,[77]],[120.0,1.5,[75]],[121.5,3.0,[73]],[124.5,1.5,[70]],[127.5,2.5,[77,82,89]],[130.0,1.0,[75,82,87]],[131.0,1.0,[75,82,87]],[132.0,1.0,[75,82,87]],[133.0,1.0,[73,82,85]],[134.0,1.0,[73,82,85]],[135.0,1.0,[73,82,85]],[136.0,1.0,[72,78,82,84]],[137.0,1.0,[72,78,82,84]],[138.0,1.5,[72,78,82,84]],[139.5,1.5,[73,82,85]],[141.0,3.0,[70,78,82]],[145.5,2.5,[77,82,89]],[148.0,1.0,[78,82,90]],[149.0,1.0,[77,82,89]],[150.0,1.0,[75,82,87]],[151.0,1.0,[77,82,89]],[152.0,1.0,[75,82,87]],[153.0,1.0,[73,82,85]],[154.0,1.0,[75,82,87]],[155.0,1.0,[73,82,85]],[156.0,1.5,[82,84]],[157.5,1.5,[73,82,85]],[159.0,4.5,[70,78,82]],[163.5,1.5,[66,78]],[165.0,1.5,[68,75,80]],[166.5,1.5,[72,84]],[168.0,1.5,[70,78,82]],[169.5,1.5,[66,78]],[172.0,1.0,[66,72,75,78]],[173.0,1.0,[66,72,75,78]],[174.0,1.0,[66,72,75,78]],[175.0,1.0,[66,72,75,78]],[176.0,1.0,[68,72,75,80]],[177.0,3.0,[66,72,75,78]],[181.5,1.5,[66,78]],[181.5,3.0,[73]],[183.0,1.5,[68,80]],[184.5,1.5,[73,85]],[186.0,1.5,[70,82]],[186.0,3.0,[78]],[187.5,1.5,[66,78]],[190.0,1.0,[66,70,75,78]],[191.0,1.0,[66,70,75,78]],[192.0,1.0,[66,70,75,78]],[193.0,1.0,[66,70,75,78]],[194.0,1.0,[68,72,77,80]],[195.0,3.0,[66,70,75,78]],[199.5,1.5,[66,78]],[199.5,4.5,[70,73]],[201.0,1.5,[68,80]],[202.5,1.5,[75,87]],[204.0,1.5,[73,85]],[204.0,3.0,[78,82]],[205.5,1.5,[70,82]],[208.0,1.0,[70,78,82]],[209.0,1.0,[70,78,82]],[210.0,1.0,[70,78,82]],[211.0,1.0,[70,78,82]],[212.0,1.0,[72,80,84]],[213.0,1.0,[70,78,82]],[214.0,1.0,[73,82,85]],[215.0,1.0,[75,82,87]],[216.0,6.0,[80,85,92]],[222.0,3.0,[80,85,92]],[225.0,6.0,[80,85,92]],[231.0,3.0,[68,75,80]],[234.0,6.0,[65,68]],[236.0,0.5,[56]],[236.5,0.5,[61]],[238.5,0.5,[56]],[239.0,0.5,[60]],[239.5,0.5,[65]],[240.0,2.0,[68,71]],[241.5,0.5,[59]],[242.0,0.5,[64]],[242.0,1.0,[73]],[242.5,0.5,[68]],[243.0,6.0,[65,68]],[245.0,0.5,[56]],[245.5,0.5,[61]],[247.5,0.5,[56]],[248.0,0.5,[60]],[248.5,0.5,[65]],[249.0,2.0,[68,71]],[250.5,0.5,[59]],[251.0,0.5,[68]],[251.0,1.0,[68]],[251.5,0.5,[64]],[252.0,2.0,[65,73]],[254.0,1.0,[68,75]],[255.0,3.0,[73,77]],[258.0,2.0,[65,73]],[260.0,1.0,[73,77]],[261.0,1.0,[75,79]],[262.0,1.0,[73,77]],[263.0,1.0,[70,73]],[264.0,3.0,[70,73]],[265.0,1.0,[65]],[266.0,1.0,[61]],[267.0,1.5,[61]],[268.5,1.5,[58]],[270.0,6.0,[70]],[272.0,0.5,[60]],[272.5,0.5,[66]],[275.0,0.5,[61]],[275.5,0.5,[66]],[276.0,2.0,[72]],[278.0,0.5,[68]],[278.0,1.0,[77]],[278.5,0.5,[65]],[279.0,6.0,[70]],[281.0,0.5,[60]],[281.5,0.5,[66]],[284.0,0.5,[61]],[284.5,0.5,[66]],[285.0,2.0,[72]],[287.0,0.5,[68]],[287.0,1.0,[77]],[287.5,0.5,[65]],[288.0,4.5,[78]],[291.0,0.5,[78]],[291.5,0.5,[66]],[292.0,0.5,[70]],[292.5,0.5,[77]],[292.5,1.5,[77]],[293.0,0.5,[66]],[293.5,0.5,[70]],[294.0,0.5,[74]],[294.0,1.5,[74]],[294.5,0.5,[66]],[295.0,0.5,[70]],[295.5,0.5,[75]],[295.5,1.5,[75]],[296.0,0.5,[66]],[296.5,0.5,[70]],[297.0,6.0,[82]],[298.5,0.5,[70]],[299.0,0.5,[78]],[299.5,0.5,[82]],[301.5,0.5,[70]],[302.0,0.5,[78]],[302.5,0.5,[82]],[303.0,3.0,[80]],[304.5,0.5,[72]],[305.0,0.5,[76]],[305.5,0.5,[80]],[306.0,6.0,[77,80]],[308.0,0.5,[68]],[308.5,0.5,[73]],[311.0,0.5,[72]],[311.5,0.5,[77]],[312.0,2.0,[80,83]],[313.5,0.5,[71]],[314.0,0.5,[76]],[314.0,1.0,[85]],[314.5,0.5,[80]],[315.0,6.0,[77,80]],[317.0,0.5,[68]],[317.5,0.5,[73]],[320.0,0.5,[72]],[320.5,0.5,[77]],[321.0,2.0,[80,83]],[322.5,0.5,[71]],[323.0,0.5,[80]],[323.0,1.0,[80]],[323.5,0.5,[76]],[324.0,1.5,[85]],[324.0,2.0,[85]],[325.5,0.5,[73]],[326.0,0.5,[80]],[326.0,1.0,[80]],[326.5,0.5,[76]],[327.0,1.5,[88]],[327.0,2.0,[88]],[328.5,0.5,[76]],[329.0,0.5,[85]],[329.0,1.0,[85]],[329.5,0.5,[80]],[330.0,1.5,[92]],[330.0,2.0,[92]],[331.5,0.5,[80]],[332.0,0.5,[88]],[332.0,1.0,[88]],[332.5,0.5,[83]],[333.0,3.0,[92]],[334.5,0.5,[80]],[335.0,0.5,[85]],[335.5,0.5,[81]],[336.0,6.0,[90]],[337.5,0.5,[78]],[338.0,0.5,[85]],[338.5,0.5,[81]],[340.5,0.5,[78]],[341.0,0.5,[85]],[341.5,0.5,[81]],[342.0,6.0,[90]],[343.5,0.5,[78]],[344.0,0.5,[85]],[344.5,0.5,[81]],[346.5,0.5,[78]],[347.0,0.5,[85]],[347.5,0.5,[81]],[348.0,2.0,[93]],[350.0,0.5,[85]],[350.0,1.0,[97]],[350.5,0.5,[73]],[351.0,6.0,[78]],[352.5,0.5,[66]],[353.0,0.5,[73]],[353.5,0.5,[69]],[355.5,0.5,[66]],[356.0,0.5,[73]],[356.5,0.5,[69]],[357.0,2.0,[81]],[359.0,0.5,[76]],[359.0,1.0,[85]],[359.5,0.5,[81]],[360.0,1.0,[85,88]],[361.0,1.0,[83,87]],[362.0,1.0,[81,85]],[363.0,1.5,[80,83]],[364.5,2.5,[78,81]],[367.0,1.0,[76,80]],[368.0,1.0,[75,78]],[369.0,1.0,[73,76]],[370.0,1.0,[71,75]],[371.0,1.0,[69,73]],[372.0,1.0,[68,71]],[373.0,1.0,[66,69]],[374.0,2.0,[64,68]],[375.0,3.0,[57]],[376.0,1.0,[63,66]],[377.0,1.0,[61,64]],[378.0,2.0,[54]],[378.0,6.0,[61,63]],[380.0,1.0,[56]],[381.0,2.0,[58]],[383.0,1.0,[61]],[384.0,2.0,[63,66]],[384.0,3.0,[60]],[386.0,1.0,[63,66,70]],[387.0,2.0,[54]],[387.0,6.0,[61,63]],[389.0,1.0,[56]],[390.0,2.0,[58]],[392.0,1.0,[61]],[393.0,2.0,[63,66]],[393.0,3.0,[60]],[395.0,1.0,[63]],[395.0,2.0,[66,70]],[396.0,1.0,[61]],[397.0,1.0,[68,72,77]],[398.0,1.0,[66,70,75]],[399.0,1.0,[61]],[399.0,3.0,[66,70]],[400.0,1.0,[58]],[401.0,1.0,[61]],[402.0,1.0,[58]],[402.0,3.0,[66,68]],[403.0,1.0,[60]],[404.0,1.0,[63]],[405.0,1.0,[61,66,70]],[406.0,1.0,[68,72,77]],[407.0,1.0,[66,70,75]],[408.0,1.0,[61]],[408.0,3.0,[66,70]],[409.0,1.0,[58]],[410.0,1.0,[61]],[411.0,1.0,[58]],[411.0,3.0,[66,68]],[412.0,1.0,[60]],[413.0,1.0,[63]],[414.0,0.5,[75]],[414.0,6.0,[75]],[414.5,0.5,[63]],[415.0,0.5,[66]],[415.5,0.5,[70]],[416.0,0.5,[66]],[416.5,0.5,[63]],[417.5,0.5,[63]],[418.0,0.5,[66]],[418.5,0.5,[70]],[419.0,0.5,[66]],[419.5,0.5,[63]],[420.0,2.0,[78]],[422.0,0.5,[72]],[422.0,1.0,[82]],[422.5,0.5,[75]],[423.0,0.5,[75]],[423.0,6.0,[75]],[423.5,0.5,[63]],[424.0,0.5,[66]],[424.5,0.5,[70]],[425.0,0.5,[66]],[425.5,0.5,[63]],[426.5,0.5,[63]],[427.0,0.5,[66]],[427.5,0.5,[70]],[428.0,0.5,[66]],[428.5,0.5,[63]],[429.0,2.0,[78]],[431.0,0.5,[72]],[431.0,1.0,[82]],[431.5,0.5,[75]],[432.0,12.0,[87]],[433.5,0.5,[75]],[434.0,0.5,[78]],[434.5,0.5,[82]],[436.5,0.5,[75]],[437.0,0.5,[78]],[437.5,0.5,[84]],[439.5,0.5,[75]],[440.0,0.5,[78]],[440.5,0.5,[82]],[442.5,0.5,[75]],[443.0,0.5,[78]],[443.5,0.5,[81]],[444.0,3.0,[85]],[445.5,0.5,[75]],[446.0,0.5,[78]],[446.5,0.5,[83]],[447.0,3.0,[87]],[448.5,0.5,[75]],[449.0,0.5,[78]],[449.5,0.5,[81]],[453.0,3.0,[89,92]],[456.0,4.0,[89]],[460.0,1.0,[84,87]],[461.0,1.0,[85,89]],[462.0,7.0,[84,87]],[469.0,1.0,[82,85]],[470.0,1.0,[84,87]],[471.0,1.5,[82,85]],[471.0,7.0,[82]],[472.5,3.0,[85,89]],[475.5,2.5,[82,85]],[478.0,1.0,[80,84]],[479.0,1.0,[82,85]],[480.0,6.0,[80,84]],[487.0,1.0,[78,82]],[488.0,1.0,[80,84]],[489.0,1.0,[82]],[489.0,3.0,[78]],[490.0,1.0,[87]],[491.0,1.0,[82]],[492.0,1.0,[80]],[492.0,4.0,[77]],[493.0,1.0,[82]],[494.0,2.0,[80]],[496.0,1.0,[75,78]],[497.0,1.0,[77,80]],[498.0,3.0,[75,78]],[501.0,3.0,[69]],[501.0,4.0,[77]],[505.0,1.0,[73,77]],[506.0,1.0,[75,78]],[507.0,1.0,[77]],[507.0,3.0,[73]],[508.0,1.0,[82]],[509.0,1.0,[77]],[510.0,1.0,[75]],[510.0,3.0,[73]],[511.0,1.0,[77]],[512.0,2.0,[75]],[514.0,1.0,[70,73]],[515.0,1.0,[72,75]],[516.0,3.0,[70,73]],[519.0,3.0,[68,72]],[523.0,1.0,[53,56]],[523.0,2.0,[53,56]],[525.0,3.0,[77,80]],[528.0,4.0,[73,77]],[532.0,1.0,[75]],[532.0,8.0,[66,70]],[533.0,1.0,[77]],[534.0,7.0,[75]],[541.0,1.0,[61,73]],[541.0,2.0,[68]],[542.0,1.0,[63,75]],[543.0,3.0,[68,77,80]],[546.0,3.0,[65,73]],[546.0,4.0,[77]],[550.0,1.0,[75]],[550.0,8.0,[65,70]],[551.0,1.0,[77]],[552.0,3.0,[75]],[555.0,3.0,[73]],[559.0,1.0,[61]],[559.0,2.0,[56]],[560.0,1.0,[63]],[561.0,3.0,[61,65,70]],[564.0,3.0,[56,61,65]],[568.0,1.0,[66]],[568.0,2.0,[58,61]],[569.0,1.0,[68]],[570.0,3.0,[66,70,73]],[573.0,3.0,[61,66,70]],[577.0,1.0,[70]],[577.0,2.0,[60,66]],[578.0,1.0,[72]],[579.0,3.0,[68,72,77]],[582.0,3.0,[60,66,68]],[587.0,0.5,[56]],[587.5,0.5,[61]],[589.5,0.5,[56]],[590.0,0.5,[60]],[590.5,0.5,[65]],[593.0,0.5,[56]],[593.5,0.5,[61]],[595.5,0.5,[56]],[596.0,0.5,[60]],[596.5,0.5,[65]],[597.0,3.0,[68,71]],[600.0,3.0,[64,73]],[605.0,0.5,[68]],[605.5,0.5,[73]],[607.5,0.5,[68]],[608.0,0.5,[72]],[608.5,0.5,[77]],[611.0,0.5,[68]],[611.5,0.5,[73]],[613.5,0.5,[68]],[614.0,0.5,[72]],[614.5,0.5,[77]],[615.0,3.0,[83]],[615.0,6.0,[80]],[618.0,3.0,[85]],[621.0,3.0,[83]],[621.0,6.0,[80]],[624.0,3.0,[85]],[627.0,3.0,[88]],[630.0,9.0,[89,92]],[639.0,6.0,[80,85,89,92]]],"lh":[[1.0,1.0,[65,68]],[1.0,8.0,[65,68]],[9.0,9.0,[66,69]],[18.0,9.0,[65,68]],[27.0,9.0,[63,66]],[36.0,6.0,[61,63]],[42.0,3.0,[60,63]],[45.0,6.0,[58,61]],[51.0,3.0,[57,60]],[54.0,6.0,[56]],[54.0,9.0,[58]],[60.0,3.0,[54]],[63.0,6.0,[53,56]],[69.0,1.5,[51]],[69.0,3.0,[54]],[70.5,2.5,[44]],[72.0,1.0,[37]],[74.0,7.0,[65,68]],[81.0,6.0,[42,49]],[82.0,8.0,[49,54,58,61]],[90.0,6.0,[41,49]],[91.0,2.0,[53,56]],[93.0,3.0,[61,65]],[96.0,3.0,[56,61]],[99.0,6.0,[42,49]],[100.0,8.0,[49,54,58,61]],[108.0,9.0,[44]],[109.0,2.0,[53,59]],[111.0,4.0,[59,61,65]],[117.0,6.0,[46]],[118.0,3.5,[63]],[118.0,8.0,[53,58]],[121.5,4.5,[61]],[126.0,6.0,[27,39]],[127.5,2.5,[65,66,70]],[130.0,1.0,[63,66,70]],[131.0,1.0,[63,66,70]],[132.0,1.0,[63,66,70]],[133.0,1.0,[61,66,70]],[134.0,1.0,[61,66,70]],[135.0,1.0,[61,66,70]],[136.0,1.0,[60,66,70]],[137.0,1.0,[60,66,70]],[138.0,1.5,[60,66,70]],[139.5,1.5,[61,66,70]],[141.0,3.0,[58,61,66]],[144.0,6.0,[27,39,46]],[145.5,2.5,[65,66,70]],[148.0,1.0,[66,70,75]],[149.0,1.0,[65,66,70]],[150.0,1.0,[63,66,70]],[151.0,1.0,[65,66,70]],[152.0,1.0,[63,66,70]],[153.0,1.0,[61,66,70]],[154.0,1.0,[63,66,70]],[155.0,1.0,[61,66,70]],[156.0,1.5,[60,66,70]],[157.5,1.5,[61,66,70]],[159.0,3.0,[58,63,66]],[162.0,6.0,[32,44]],[163.5,1.5,[54]],[165.0,1.5,[56]],[165.0,3.0,[60,63]],[166.5,1.5,[60]],[168.0,1.5,[58]],[168.0,3.0,[63,66]],[169.5,1.5,[54]],[171.0,6.0,[33,45]],[172.0,1.0,[54,60,63]],[173.0,1.0,[54,60,63]],[174.0,1.0,[54,60,63]],[175.0,1.0,[54,60,63]],[176.0,1.0,[56,60,63]],[177.0,3.0,[54,60,63]],[180.0,6.0,[34,46]],[181.5,1.5,[54]],[181.5,3.0,[58,61]],[183.0,1.5,[56]],[184.5,1.5,[61]],[186.0,1.5,[58]],[186.0,3.0,[61,66]],[187.5,1.5,[54]],[189.0,6.0,[36,48]],[190.0,1.0,[54,58,63]],[191.0,1.0,[54,58,63]],[192.0,1.0,[54,58,63]],[193.0,1.0,[54,58,63]],[194.0,1.0,[56,60,65]],[195.0,3.0,[54,58,63]],[198.0,6.0,[37,49]],[199.5,1.5,[54]],[199.5,4.5,[58,61]],[201.0,1.5,[56]],[202.5,1.5,[63]],[204.0,1.5,[61]],[204.0,3.0,[66,70]],[205.5,1.5,[58]],[207.0,6.0,[39,51]],[208.0,1.0,[58,61,66]],[209.0,1.0,[58,61,66]],[210.0,1.0,[58,61,66]],[211.0,1.0,[58,61,66]],[212.0,1.0,[60,63,68]],[213.0,1.0,[58,61,66]],[214.0,1.0,[61,66,70]],[215.0,1.0,[63,66,70]],[216.0,6.0,[65,68,73,77]],[222.0,3.0,[64,68,70,73,76]],[225.0,6.0,[63,66,68,73,75]],[231.0,3.0,[56,63,66,72]],[234.0,0.5,[37]],[234.0,3.0,[37]],[234.5,0.5,[44]],[235.0,0.5,[49]],[235.5,0.5,[53]],[237.0,0.5,[41]],[237.0,3.0,[41]],[237.5,0.5,[48]],[238.0,0.5,[53]],[240.0,0.5,[44]],[240.0,3.0,[44]],[240.5,0.5,[52]],[241.0,0.5,[56]],[243.0,0.5,[37]],[243.0,3.0,[37]],[243.5,0.5,[44]],[244.0,0.5,[49]],[244.5,0.5,[53]],[246.0,0.5,[41]],[246.0,3.0,[41]],[246.5,0.5,[48]],[247.0,0.5,[53]],[249.0,0.5,[44]],[249.0,3.0,[44]],[249.5,0.5,[52]],[250.0,0.5,[56]],[252.0,0.5,[37]],[252.5,0.5,[44]],[253.0,0.5,[49]],[253.5,0.5,[53]],[254.0,0.5,[56]],[254.5,0.5,[61]],[255.0,0.5,[65]],[255.5,0.5,[68]],[256.0,0.5,[65]],[256.5,0.5,[61]],[257.0,0.5,[56]],[257.5,0.5,[53]],[258.0,0.5,[56]],[258.5,0.5,[53]],[259.0,0.5,[49]],[259.5,0.5,[44]],[260.0,0.5,[49]],[260.5,0.5,[44]],[261.0,0.5,[39]],[261.5,0.5,[46]],[262.0,0.5,[51]],[262.5,0.5,[55]],[263.0,0.5,[58]],[263.5,0.5,[63]],[264.0,0.5,[67]],[264.0,1.0,[67]],[264.5,0.5,[63]],[265.0,0.5,[58]],[265.5,0.5,[55]],[266.0,0.5,[51]],[266.5,0.5,[46]],[267.0,0.5,[39]],[267.5,0.5,[46]],[268.0,0.5,[51]],[268.5,0.5,[55]],[269.0,0.5,[51]],[269.5,0.5,[46]],[270.0,0.5,[44]],[270.0,3.0,[44]],[270.5,0.5,[51]],[271.0,0.5,[54]],[271.5,0.5,[58]],[273.0,0.5,[42]],[273.0,3.0,[42]],[273.5,0.5,[49]],[274.0,0.5,[54]],[274.5,0.5,[58]],[276.0,0.5,[41]],[276.0,3.0,[41]],[276.5,0.5,[48]],[277.0,0.5,[53]],[277.5,0.5,[56]],[278.0,1.0,[60]],[279.0,0.5,[44]],[279.0,3.0,[44]],[279.5,0.5,[51]],[280.0,0.5,[54]],[280.5,0.5,[58]],[282.0,0.5,[42]],[282.0,3.0,[42]],[282.5,0.5,[49]],[283.0,0.5,[54]],[283.5,0.5,[58]],[285.0,0.5,[41]],[285.0,3.0,[41]],[285.5,0.5,[48]],[286.0,0.5,[53]],[286.5,0.5,[56]],[287.0,1.0,[60]],[288.0,0.5,[39]],[288.0,3.0,[39]],[288.5,0.5,[46]],[289.0,0.5,[51]],[289.5,0.5,[54]],[290.0,0.5,[58]],[290.5,0.5,[63]],[291.0,1.5,[66]],[292.5,1.5,[65]],[294.0,1.5,[62]],[295.5,1.5,[63]],[297.0,0.5,[62]],[297.0,3.0,[62]],[297.5,0.5,[66]],[298.0,0.5,[70]],[300.0,0.5,[63]],[300.0,3.0,[63]],[300.5,0.5,[66]],[301.0,0.5,[70]],[303.0,0.5,[60]],[303.0,3.0,[56]],[303.5,0.5,[64]],[304.0,0.5,[68]],[306.0,0.5,[49]],[306.0,3.0,[49]],[306.5,0.5,[56]],[307.0,0.5,[61]],[307.5,0.5,[65]],[309.0,0.5,[56]],[309.0,3.0,[53]],[309.5,0.5,[60]],[310.0,0.5,[65]],[310.5,0.5,[68]],[312.0,0.5,[59]],[312.0,3.0,[56]],[312.5,0.5,[64]],[313.0,0.5,[68]],[315.0,0.5,[49]],[315.0,3.0,[49]],[315.5,0.5,[56]],[316.0,0.5,[61]],[316.5,0.5,[65]],[318.0,0.5,[56]],[318.0,3.0,[53]],[318.5,0.5,[60]],[319.0,0.5,[65]],[319.5,0.5,[68]],[321.0,0.5,[59]],[321.0,3.0,[56]],[321.5,0.5,[64]],[322.0,0.5,[68]],[324.0,0.5,[61]],[324.0,3.0,[59]],[324.5,0.5,[64]],[325.0,0.5,[68]],[325.5,1.5,[71]],[327.0,0.5,[64]],[327.0,3.0,[61]],[327.5,0.5,[68]],[328.0,0.5,[71]],[328.5,1.5,[73]],[330.0,0.5,[68]],[330.0,3.0,[64]],[330.5,0.5,[71]],[331.0,0.5,[73]],[331.5,1.5,[76]],[333.0,0.5,[68]],[333.0,3.0,[68]],[333.5,0.5,[69]],[334.0,0.5,[73]],[336.0,0.5,[66]],[336.0,3.0,[66]],[336.5,0.5,[69]],[337.0,0.5,[73]],[339.0,0.5,[66]],[339.0,3.0,[65]],[339.5,0.5,[69]],[340.0,0.5,[73]],[342.0,0.5,[66]],[342.0,3.0,[64]],[342.5,0.5,[69]],[343.0,0.5,[73]],[345.0,0.5,[66]],[345.0,3.0,[63]],[345.5,0.5,[69]],[346.0,0.5,[73]],[348.0,0.5,[64]],[348.0,3.0,[61]],[348.5,0.5,[69]],[349.0,0.5,[73]],[349.5,0.5,[76]],[351.0,0.5,[59]],[351.0,3.0,[59]],[351.5,0.5,[63]],[352.0,0.5,[66]],[354.0,0.5,[57]],[354.0,3.0,[57]],[354.5,0.5,[61]],[355.0,0.5,[64]],[357.0,0.5,[56]],[357.0,3.0,[56]],[357.5,0.5,[61]],[358.0,0.5,[64]],[358.5,0.5,[69]],[360.0,0.5,[54]],[360.0,9.0,[54]],[360.5,0.5,[61]],[361.0,0.5,[64]],[361.5,0.5,[66]],[362.0,0.5,[69]],[362.5,0.5,[73]],[363.0,0.5,[76]],[363.5,0.5,[78]],[364.0,0.5,[76]],[364.5,0.5,[73]],[365.0,0.5,[69]],[365.5,0.5,[66]],[366.0,0.5,[64]],[366.5,0.5,[66]],[367.0,0.5,[64]],[367.5,0.5,[61]],[368.0,0.5,[57]],[368.5,0.5,[54]],[369.0,0.5,[42]],[369.5,0.5,[49]],[370.0,0.5,[52]],[370.5,0.5,[54]],[371.0,0.5,[57]],[371.5,0.5,[61]],[372.0,0.5,[64]],[372.5,0.5,[61]],[373.0,0.5,[57]],[373.5,0.5,[54]],[374.0,0.5,[52]],[374.5,0.5,[49]],[375.0,0.5,[42]],[375.5,0.5,[49]],[376.0,0.5,[42]],[376.5,0.5,[49]],[377.0,0.5,[42]],[377.5,0.5,[49]],[378.0,0.5,[44]],[378.5,0.5,[51]],[379.0,0.5,[44]],[379.5,0.5,[51]],[380.0,0.5,[44]],[380.5,0.5,[51]],[381.0,0.5,[44]],[381.5,0.5,[51]],[382.0,0.5,[44]],[382.5,0.5,[51]],[383.0,0.5,[44]],[383.5,0.5,[51]],[384.0,0.5,[44]],[384.5,0.5,[51]],[385.0,0.5,[44]],[385.5,0.5,[51]],[386.0,0.5,[44]],[386.5,0.5,[51]],[387.0,0.5,[44]],[387.5,0.5,[51]],[388.0,0.5,[44]],[388.5,0.5,[51]],[389.0,0.5,[44]],[389.5,0.5,[51]],[390.0,0.5,[44]],[390.5,0.5,[51]],[391.0,0.5,[44]],[391.5,0.5,[51]],[392.0,0.5,[44]],[392.5,0.5,[51]],[393.0,0.5,[44]],[393.5,0.5,[51]],[394.0,0.5,[44]],[394.5,0.5,[51]],[395.0,0.5,[44]],[395.5,0.5,[51]],[396.0,0.5,[44]],[396.5,0.5,[39]],[397.0,0.5,[44]],[397.5,0.5,[51]],[398.0,0.5,[44]],[398.5,0.5,[51]],[399.0,0.5,[56]],[399.5,0.5,[51]],[400.0,0.5,[56]],[400.5,0.5,[63]],[401.0,0.5,[56]],[401.5,0.5,[51]],[402.0,0.5,[56]],[402.5,0.5,[51]],[403.0,0.5,[44]],[403.5,0.5,[51]],[404.0,0.5,[44]],[404.5,0.5,[39]],[405.0,0.5,[44]],[405.5,0.5,[39]],[406.0,0.5,[44]],[406.5,0.5,[51]],[407.0,0.5,[44]],[407.5,0.5,[51]],[408.0,0.5,[56]],[408.5,0.5,[51]],[409.0,0.5,[56]],[409.5,0.5,[63]],[410.0,0.5,[56]],[410.5,0.5,[51]],[411.0,0.5,[56]],[411.5,0.5,[51]],[412.0,0.5,[56]],[412.5,0.5,[51]],[413.0,0.5,[56]],[413.5,0.5,[51]],[414.0,2.0,[54]],[414.0,6.0,[61]],[416.0,1.0,[56]],[417.0,2.0,[58]],[419.0,1.0,[61]],[420.0,0.5,[60]],[420.0,3.0,[60]],[420.5,0.5,[63]],[421.0,0.5,[66]],[421.5,0.5,[70]],[423.0,2.0,[54]],[423.0,6.0,[61]],[425.0,1.0,[56]],[426.0,2.0,[58]],[428.0,1.0,[61]],[429.0,0.5,[60]],[429.0,3.0,[60]],[429.5,0.5,[63]],[430.0,0.5,[66]],[430.5,0.5,[70]],[432.0,0.5,[66]],[432.0,9.0,[66]],[432.5,0.5,[70]],[433.0,0.5,[73]],[435.0,0.5,[66]],[435.5,0.5,[70]],[436.0,0.5,[73]],[438.0,0.5,[66]],[438.5,0.5,[70]],[439.0,0.5,[73]],[441.0,0.5,[66]],[441.0,9.0,[66]],[441.5,0.5,[69]],[442.0,0.5,[73]],[444.0,0.5,[66]],[444.5,0.5,[69]],[445.0,0.5,[73]],[447.0,0.5,[66]],[447.5,0.5,[69]],[448.0,0.5,[73]],[450.0,0.5,[65]],[450.0,6.0,[65]],[450.5,0.5,[68]],[451.0,0.5,[72]],[451.5,0.5,[77]],[452.0,0.5,[80]],[452.5,0.5,[84]],[456.0,3.0,[65]],[459.0,0.5,[65]],[459.0,6.0,[65]],[459.5,0.5,[69]],[460.0,0.5,[72]],[460.5,0.5,[75]],[461.0,0.5,[77]],[461.5,0.5,[81]],[465.0,3.0,[65]],[468.0,0.5,[65]],[468.0,6.0,[65]],[468.5,0.5,[68]],[469.0,0.5,[70]],[469.5,0.5,[73]],[470.0,0.5,[77]],[470.5,0.5,[80]],[474.0,3.0,[65]],[477.0,0.5,[63]],[477.0,6.0,[63]],[477.5,0.5,[66]],[478.0,0.5,[68]],[478.5,0.5,[72]],[479.0,0.5,[75]],[479.5,0.5,[78]],[483.0,3.0,[63]],[486.0,0.5,[61]],[486.0,6.0,[61]],[486.5,0.5,[63]],[487.0,0.5,[66]],[487.5,0.5,[70]],[488.0,0.5,[73]],[488.5,0.5,[75]],[492.0,3.0,[60,63,65,68,72]],[495.0,0.5,[48]],[495.0,6.0,[48]],[495.5,0.5,[54]],[496.0,0.5,[58]],[496.5,0.5,[60]],[497.0,0.5,[63]],[497.5,0.5,[66]],[498.0,3.0,[70]],[501.0,3.0,[53,60,63]],[504.0,0.5,[56]],[504.0,6.0,[56]],[504.5,0.5,[58]],[505.0,0.5,[61]],[505.5,0.5,[65]],[506.0,0.5,[68]],[506.5,0.5,[70]],[510.0,3.0,[54,58,61,63]],[513.0,0.5,[53]],[513.0,6.0,[53]],[513.5,0.5,[56]],[514.0,0.5,[58]],[514.5,0.5,[61]],[515.0,0.5,[65]],[515.5,0.5,[68]],[519.0,1.5,[51]],[519.0,3.0,[54,60]],[520.5,1.5,[44]],[522.0,1.0,[37,44]],[524.0,7.0,[65,68]],[525.0,6.0,[59]],[531.0,6.0,[42,49]],[532.0,8.0,[49,54,58,61]],[540.0,6.0,[44]],[541.0,2.0,[53,56]],[543.0,3.0,[61,65]],[543.0,6.0,[59]],[546.0,3.0,[61]],[549.0,6.0,[46]],[550.0,5.0,[63]],[550.0,8.0,[53,58]],[555.0,3.0,[61]],[558.0,9.0,[41]],[567.0,3.0,[39]],[570.0,3.0,[51]],[573.0,3.0,[63]],[576.0,1.5,[44]],[576.0,6.0,[44]],[577.5,1.5,[51]],[579.0,3.0,[80]],[582.0,3.0,[56]],[585.0,0.5,[37]],[585.0,3.0,[37]],[585.5,0.5,[44]],[586.0,0.5,[49]],[586.5,0.5,[53]],[588.0,0.5,[41]],[588.0,3.0,[41]],[588.5,0.5,[48]],[589.0,0.5,[53]],[591.0,0.5,[37]],[591.0,3.0,[37]],[591.5,0.5,[44]],[592.0,0.5,[49]],[592.5,0.5,[53]],[594.0,0.5,[41]],[594.0,3.0,[41]],[594.5,0.5,[48]],[595.0,0.5,[53]],[597.0,0.5,[44]],[597.0,6.0,[44]],[597.5,0.5,[52]],[598.0,0.5,[56]],[598.5,0.5,[59]],[599.0,0.5,[64]],[599.5,0.5,[66]],[600.0,3.0,[68]],[603.0,0.5,[49]],[603.0,3.0,[49]],[603.5,0.5,[56]],[604.0,0.5,[61]],[604.5,0.5,[65]],[606.0,0.5,[53]],[606.0,3.0,[53]],[606.5,0.5,[60]],[607.0,0.5,[65]],[609.0,0.5,[49]],[609.0,3.0,[49]],[609.5,0.5,[56]],[610.0,0.5,[61]],[610.5,0.5,[65]],[612.0,0.5,[53]],[612.0,3.0,[53]],[612.5,0.5,[60]],[613.0,0.5,[65]],[615.0,0.5,[56]],[615.0,6.0,[56]],[615.5,0.5,[59]],[616.0,0.5,[64]],[616.5,0.5,[68]],[617.0,0.5,[71]],[617.5,3.5,[76]],[621.0,0.5,[56]],[621.0,6.0,[56]],[621.5,0.5,[59]],[622.0,0.5,[64]],[622.5,0.5,[68]],[623.0,0.5,[71]],[623.5,3.5,[76]],[627.0,3.0,[44]],[630.0,0.5,[37]],[630.0,6.0,[37]],[630.5,0.5,[44]],[631.0,0.5,[49]],[631.5,0.5,[53]],[632.0,0.5,[56]],[632.5,0.5,[61]],[633.0,1.0,[65]],[634.0,1.0,[68]],[635.0,1.0,[73]],[636.0,1.0,[77]],[637.0,1.0,[80]],[638.0,1.0,[85]],[639.0,6.0,[61,68,73,77]]],"end":648,"pickup":0,"cadenza":0,"sh":[[1.0,1.0,1,31,0,0,65],[1.0,1.0,1,33,-1,0,68],[1.0,8.0,1,31,0,2,65],[1.0,8.0,1,33,-1,2,68],[2.0,4.0,0,38,0,0,77],[2.0,4.0,0,40,-1,0,80],[6.0,4.0,0,36,-1,0,73],[6.0,4.0,0,38,0,0,77],[9.0,9.0,1,32,-1,2,66],[9.0,9.0,1,34,-2,2,69],[10.0,1.0,0,35,0,0,72],[10.0,1.0,0,37,-1,0,75],[11.0,1.0,0,36,-1,0,73],[11.0,1.0,0,38,0,0,77],[12.0,7.0,0,35,0,0,72],[12.0,7.0,0,37,-1,0,75],[18.0,9.0,1,31,0,2,65],[18.0,9.0,1,33,-1,2,68],[19.0,1.0,0,34,-1,0,70],[19.0,1.0,0,36,-1,0,73],[20.0,1.0,0,35,0,0,72],[20.0,1.0,0,37,-1,0,75],[21.0,1.5,0,36,-1,0,73],[21.0,7.0,0,34,-1,1,70],[22.5,3.0,0,38,0,0,77],[25.5,2.5,0,36,-1,0,73],[27.0,9.0,1,30,-1,2,63],[27.0,9.0,1,32,-1,2,66],[28.0,1.0,0,33,-1,0,68],[28.0,1.0,0,35,0,0,72],[29.0,1.0,0,34,-1,0,70],[29.0,1.0,0,36,-1,0,73],[30.0,6.0,0,33,-1,0,68],[30.0,7.0,0,35,0,0,72],[36.0,6.0,1,29,-1,3,61],[36.0,6.0,1,30,-1,2,63],[36.0,6.0,0,32,-1,1,66],[37.0,1.0,0,34,-1,0,70],[38.0,1.0,0,35,0,0,72],[39.0,1.0,0,34,-1,0,70],[40.0,1.0,0,37,-1,0,75],[41.0,1.0,0,34,-1,0,70],[42.0,1.0,0,33,-1,0,68],[42.0,3.0,1,28,0,3,60],[42.0,3.0,1,30,-1,2,63],[42.0,3.0,0,32,-1,1,66],[43.0,1.0,0,34,-1,0,70],[44.0,2.0,0,33,-1,0,68],[45.0,6.0,1,27,-1,3,58],[45.0,6.0,1,29,-1,2,61],[45.0,6.0,0,30,-1,1,63],[46.0,1.0,0,32,-1,0,66],[47.0,1.0,0,33,-1,0,68],[48.0,3.0,0,32,-1,0,66],[51.0,3.0,1,26,0,3,57],[51.0,3.0,1,28,0,2,60],[51.0,3.0,0,30,-1,1,63],[51.0,4.0,0,31,0,0,65],[54.0,6.0,1,26,-1,3,56],[54.0,9.0,1,27,-1,2,58],[54.0,9.0,0,29,-1,1,61],[55.0,1.0,0,31,0,0,65],[56.0,1.0,0,32,-1,0,66],[57.0,1.0,0,31,0,0,65],[58.0,1.0,0,34,-1,0,70],[59.0,1.0,0,31,0,0,65],[60.0,1.0,0,30,-1,0,63],[60.0,3.0,1,25,-1,3,54],[61.0,1.0,0,31,0,0,65],[62.0,2.0,0,30,-1,0,63],[63.0,6.0,1,24,0,3,53],[63.0,6.0,1,26,-1,2,56],[63.0,6.0,0,27,-1,1,58],[64.0,1.0,0,29,-1,0,61],[65.0,1.0,0,30,-1,0,63],[66.0,3.0,0,29,-1,0,61],[69.0,1.5,1,23,-1,3,51],[69.0,3.0,1,25,-1,2,54],[69.0,3.0,0,26,-1,1,56],[69.0,3.0,0,28,0,0,60],[70.5,2.5,1,19,-1,3,44],[72.0,1.0,1,15,-1,3,37],[73.0,1.0,0,24,0,3,53],[73.0,1.0,0,26,-1,3,56],[73.0,2.0,0,24,0,0,53],[73.0,2.0,0,26,-1,0,56],[74.0,7.0,1,31,0,3,65],[74.0,7.0,1,33,-1,3,68],[75.0,3.0,0,38,0,0,77],[75.0,3.0,0,40,-1,0,80],[78.0,4.0,0,36,-1,0,73],[78.0,4.0,0,38,0,0,77],[81.0,6.0,1,18,-1,3,42],[81.0,6.0,1,22,-1,3,49],[82.0,1.0,0,37,-1,0,75],[82.0,8.0,1,22,-1,2,49],[82.0,8.0,1,25,-1,2,54],[82.0,8.0,1,27,-1,2,58],[82.0,8.0,1,29,-1,2,61],[82.0,8.0,0,32,-1,1,66],[82.0,8.0,0,34,-1,1,70],[83.0,1.0,0,38,0,0,77],[84.0,7.0,0,37,-1,0,75],[90.0,6.0,1,17,0,3,41],[90.0,6.0,1,22,-1,3,49],[91.0,1.0,0,29,-1,0,61],[91.0,1.0,0,36,-1,0,73],[91.0,2.0,1,24,0,2,53],[91.0,2.0,1,26,-1,2,56],[91.0,2.0,0,33,-1,1,68],[92.0,1.0,0,30,-1,0,63],[92.0,1.0,0,37,-1,0,75],[93.0,3.0,1,29,-1,2,61],[93.0,3.0,1,31,0,2,65],[93.0,3.0,0,33,-1,0,68],[93.0,3.0,0,36,-1,0,73],[93.0,3.0,0,40,-1,0,80],[96.0,3.0,1,26,-1,2,56],[96.0,3.0,1,29,-1,2,61],[96.0,3.0,0,31,0,0,65],[96.0,3.0,0,36,-1,0,73],[96.0,4.0,0,38,0,0,77],[99.0,6.0,1,18,-1,3,42],[99.0,6.0,1,22,-1,3,49],[100.0,1.0,0,37,-1,0,75],[100.0,8.0,1,22,-1,2,49],[100.0,8.0,1,25,-1,2,54],[100.0,8.0,1,27,-1,2,58],[100.0,8.0,1,29,-1,2,61],[100.0,8.0,0,32,-1,1,66],[100.0,8.0,0,34,-1,1,70],[101.0,1.0,0,38,0,0,77],[102.0,3.0,0,37,-1,0,75],[105.0,4.0,0,36,-1,0,73],[108.0,9.0,1,19,-1,3,44],[109.0,1.0,0,29,-1,0,61],[109.0,1.0,0,36,-1,0,73],[109.0,2.0,1,24,0,2,53],[109.0,2.0,1,28,-1,2,59],[109.0,2.0,0,33,-1,1,68],[110.0,1.0,0,30,-1,0,63],[110.0,1.0,0,37,-1,0,75],[111.0,1.5,0,34,-1,0,70],[111.0,1.5,0,41,-1,0,82],[111.0,4.0,1,28,-1,2,59],[111.0,4.0,1,29,-1,2,61],[111.0,4.0,1,31,0,2,65],[111.0,6.0,0,38,0,1,77],[112.5,3.0,0,33,-1,0,68],[112.5,3.0,0,40,-1,0,80],[115.5,1.5,0,31,0,0,65],[115.5,1.5,0,38,0,0,77],[117.0,1.0,0,38,0,0,77],[117.0,6.0,1,20,-1,3,46],[118.0,1.0,0,37,-1,0,75],[118.0,3.5,1,30,-1,2,63],[118.0,8.0,1,24,0,3,53],[118.0,8.0,1,27,-1,3,58],[118.0,8.0,0,31,0,1,65],[118.0,8.0,0,34,-1,1,70],[119.0,1.0,0,38,0,0,77],[120.0,1.5,0,37,-1,0,75],[121.5,3.0,0,36,-1,0,73],[121.5,4.5,1,29,-1,2,61],[124.5,1.5,0,34,-1,0,70],[126.0,6.0,1,9,-1,3,27],[126.0,6.0,1,16,-1,3,39],[127.5,2.5,1,31,0,2,65],[127.5,2.5,1,32,-1,2,66],[127.5,2.5,1,34,-1,2,70],[127.5,2.5,0,38,0,0,77],[127.5,2.5,0,41,-1,0,82],[127.5,2.5,0,45,0,0,89],[130.0,1.0,1,30,-1,2,63],[130.0,1.0,1,32,-1,2,66],[130.0,1.0,1,34,-1,2,70],[130.0,1.0,0,37,-1,0,75],[130.0,1.0,0,41,-1,0,82],[130.0,1.0,0,44,-1,0,87],[131.0,1.0,1,30,-1,2,63],[131.0,1.0,1,32,-1,2,66],[131.0,1.0,1,34,-1,2,70],[131.0,1.0,0,37,-1,0,75],[131.0,1.0,0,41,-1,0,82],[131.0,1.0,0,44,-1,0,87],[132.0,1.0,1,30,-1,2,63],[132.0,1.0,1,32,-1,2,66],[132.0,1.0,1,34,-1,2,70],[132.0,1.0,0,37,-1,0,75],[132.0,1.0,0,41,-1,0,82],[132.0,1.0,0,44,-1,0,87],[133.0,1.0,1,29,-1,2,61],[133.0,1.0,1,32,-1,2,66],[133.0,1.0,1,34,-1,2,70],[133.0,1.0,0,36,-1,0,73],[133.0,1.0,0,41,-1,0,82],[133.0,1.0,0,43,-1,0,85],[134.0,1.0,1,29,-1,2,61],[134.0,1.0,1,32,-1,2,66],[134.0,1.0,1,34,-1,2,70],[134.0,1.0,0,36,-1,0,73],[134.0,1.0,0,41,-1,0,82],[134.0,1.0,0,43,-1,0,85],[135.0,1.0,1,29,-1,2,61],[135.0,1.0,1,32,-1,2,66],[135.0,1.0,1,34,-1,2,70],[135.0,1.0,0,36,-1,0,73],[135.0,1.0,0,41,-1,0,82],[135.0,1.0,0,43,-1,0,85],[136.0,1.0,1,28,0,2,60],[136.0,1.0,1,32,-1,2,66],[136.0,1.0,1,34,-1,2,70],[136.0,1.0,0,35,0,0,72],[136.0,1.0,0,39,-1,0,78],[136.0,1.0,0,41,-1,0,82],[136.0,1.0,0,42,0,0,84],[137.0,1.0,1,28,0,2,60],[137.0,1.0,1,32,-1,2,66],[137.0,1.0,1,34,-1,2,70],[137.0,1.0,0,35,0,0,72],[137.0,1.0,0,39,-1,0,78],[137.0,1.0,0,41,-1,0,82],[137.0,1.0,0,42,0,0,84],[138.0,1.5,1,28,0,2,60],[138.0,1.5,1,32,-1,2,66],[138.0,1.5,1,34,-1,2,70],[138.0,1.5,0,35,0,0,72],[138.0,1.5,0,39,-1,0,78],[138.0,1.5,0,41,-1,0,82],[138.0,1.5,0,42,0,0,84],[139.5,1.5,1,29,-1,2,61],[139.5,1.5,1,32,-1,2,66],[139.5,1.5,1,34,-1,2,70],[139.5,1.5,0,36,-1,0,73],[139.5,1.5,0,41,-1,0,82],[139.5,1.5,0,43,-1,0,85],[141.0,3.0,1,27,-1,2,58],[141.0,3.0,1,29,-1,2,61],[141.0,3.0,1,32,-1,2,66],[141.0,3.0,0,34,-1,0,70],[141.0,3.0,0,39,-1,0,78],[141.0,3.0,0,41,-1,0,82],[144.0,6.0,1,9,-1,3,27],[144.0,6.0,1,16,-1,3,39],[144.0,6.0,1,20,-1,1,46],[145.5,2.5,1,31,0,2,65],[145.5,2.5,1,32,-1,2,66],[145.5,2.5,1,34,-1,2,70],[145.5,2.5,0,38,0,0,77],[145.5,2.5,0,41,-1,0,82],[145.5,2.5,0,45,0,0,89],[148.0,1.0,1,32,-1,2,66],[148.0,1.0,1,34,-1,2,70],[148.0,1.0,1,37,-1,2,75],[148.0,1.0,0,39,-1,0,78],[148.0,1.0,0,41,-1,0,82],[148.0,1.0,0,46,-1,0,90],[149.0,1.0,1,31,0,2,65],[149.0,1.0,1,32,-1,2,66],[149.0,1.0,1,34,-1,2,70],[149.0,1.0,0,38,0,0,77],[149.0,1.0,0,41,-1,0,82],[149.0,1.0,0,45,0,0,89],[150.0,1.0,1,30,-1,2,63],[150.0,1.0,1,32,-1,2,66],[150.0,1.0,1,34,-1,2,70],[150.0,1.0,0,37,-1,0,75],[150.0,1.0,0,41,-1,0,82],[150.0,1.0,0,44,-1,0,87],[151.0,1.0,1,31,0,2,65],[151.0,1.0,1,32,-1,2,66],[151.0,1.0,1,34,-1,2,70],[151.0,1.0,0,38,0,0,77],[151.0,1.0,0,41,-1,0,82],[151.0,1.0,0,45,0,0,89],[152.0,1.0,1,30,-1,2,63],[152.0,1.0,1,32,-1,2,66],[152.0,1.0,1,34,-1,2,70],[152.0,1.0,0,37,-1,0,75],[152.0,1.0,0,41,-1,0,82],[152.0,1.0,0,44,-1,0,87],[153.0,1.0,1,29,-1,2,61],[153.0,1.0,1,32,-1,2,66],[153.0,1.0,1,34,-1,2,70],[153.0,1.0,0,36,-1,0,73],[153.0,1.0,0,41,-1,0,82],[153.0,1.0,0,43,-1,0,85],[154.0,1.0,1,30,-1,2,63],[154.0,1.0,1,32,-1,2,66],[154.0,1.0,1,34,-1,2,70],[154.0,1.0,0,37,-1,0,75],[154.0,1.0,0,41,-1,0,82],[154.0,1.0,0,44,-1,0,87],[155.0,1.0,1,29,-1,2,61],[155.0,1.0,1,32,-1,2,66],[155.0,1.0,1,34,-1,2,70],[155.0,1.0,0,36,-1,0,73],[155.0,1.0,0,41,-1,0,82],[155.0,1.0,0,43,-1,0,85],[156.0,1.5,1,28,0,2,60],[156.0,1.5,1,32,-1,2,66],[156.0,1.5,1,34,-1,2,70],[156.0,1.5,0,41,-1,0,82],[156.0,1.5,0,42,0,0,84],[157.5,1.5,1,29,-1,2,61],[157.5,1.5,1,32,-1,2,66],[157.5,1.5,1,34,-1,2,70],[157.5,1.5,0,36,-1,0,73],[157.5,1.5,0,41,-1,0,82],[157.5,1.5,0,43,-1,0,85],[159.0,3.0,1,27,-1,2,58],[159.0,3.0,1,30,-1,2,63],[159.0,3.0,1,32,-1,2,66],[159.0,4.5,0,34,-1,0,70],[159.0,4.5,0,39,-1,0,78],[159.0,4.5,0,41,-1,0,82],[162.0,6.0,1,12,-1,3,32],[162.0,6.0,1,19,-1,3,44],[163.5,1.5,1,25,-1,2,54],[163.5,1.5,0,32,-1,0,66],[163.5,1.5,0,39,-1,0,78],[165.0,1.5,1,26,-1,2,56],[165.0,1.5,0,33,-1,0,68],[165.0,1.5,0,37,-1,0,75],[165.0,1.5,0,40,-1,0,80],[165.0,3.0,1,28,0,3,60],[165.0,3.0,1,30,-1,3,63],[166.5,1.5,1,28,0,2,60],[166.5,1.5,0,35,0,0,72],[166.5,1.5,0,42,0,0,84],[168.0,1.5,1,27,-1,2,58],[168.0,1.5,0,34,-1,0,70],[168.0,1.5,0,39,-1,0,78],[168.0,1.5,0,41,-1,0,82],[168.0,3.0,1,30,-1,3,63],[168.0,3.0,1,32,-1,3,66],[169.5,1.5,1,25,-1,2,54],[169.5,1.5,0,32,-1,0,66],[169.5,1.5,0,39,-1,0,78],[171.0,6.0,1,12,0,3,33],[171.0,6.0,1,19,0,3,45],[172.0,1.0,1,25,-1,2,54],[172.0,1.0,1,28,0,2,60],[172.0,1.0,1,30,-1,2,63],[172.0,1.0,0,32,-1,0,66],[172.0,1.0,0,35,0,0,72],[172.0,1.0,0,37,-1,0,75],[172.0,1.0,0,39,-1,0,78],[173.0,1.0,1,25,-1,2,54],[173.0,1.0,1,28,0,2,60],[173.0,1.0,1,30,-1,2,63],[173.0,1.0,0,32,-1,0,66],[173.0,1.0,0,35,0,0,72],[173.0,1.0,0,37,-1,0,75],[173.0,1.0,0,39,-1,0,78],[174.0,1.0,1,25,-1,2,54],[174.0,1.0,1,28,0,2,60],[174.0,1.0,1,30,-1,2,63],[174.0,1.0,0,32,-1,0,66],[174.0,1.0,0,35,0,0,72],[174.0,1.0,0,37,-1,0,75],[174.0,1.0,0,39,-1,0,78],[175.0,1.0,1,25,-1,2,54],[175.0,1.0,1,28,0,2,60],[175.0,1.0,1,30,-1,2,63],[175.0,1.0,0,32,-1,0,66],[175.0,1.0,0,35,0,0,72],[175.0,1.0,0,37,-1,0,75],[175.0,1.0,0,39,-1,0,78],[176.0,1.0,1,26,-1,2,56],[176.0,1.0,1,28,0,2,60],[176.0,1.0,1,30,-1,2,63],[176.0,1.0,0,33,-1,0,68],[176.0,1.0,0,35,0,0,72],[176.0,1.0,0,37,-1,0,75],[176.0,1.0,0,40,-1,0,80],[177.0,3.0,1,25,-1,2,54],[177.0,3.0,1,28,0,2,60],[177.0,3.0,1,30,-1,2,63],[177.0,3.0,0,32,-1,0,66],[177.0,3.0,0,35,0,0,72],[177.0,3.0,0,37,-1,0,75],[177.0,3.0,0,39,-1,0,78],[180.0,6.0,1,13,-1,3,34],[180.0,6.0,1,20,-1,3,46],[181.5,1.5,1,25,-1,2,54],[181.5,1.5,0,32,-1,0,66],[181.5,1.5,0,39,-1,0,78],[181.5,3.0,1,27,-1,3,58],[181.5,3.0,1,29,-1,3,61],[181.5,3.0,0,36,-1,1,73],[183.0,1.5,1,26,-1,2,56],[183.0,1.5,0,33,-1,0,68],[183.0,1.5,0,40,-1,0,80],[184.5,1.5,1,29,-1,2,61],[184.5,1.5,0,36,-1,0,73],[184.5,1.5,0,43,-1,0,85],[186.0,1.5,1,27,-1,2,58],[186.0,1.5,0,34,-1,0,70],[186.0,1.5,0,41,-1,0,82],[186.0,3.0,1,29,-1,3,61],[186.0,3.0,1,32,-1,3,66],[186.0,3.0,0,39,-1,1,78],[187.5,1.5,1,25,-1,2,54],[187.5,1.5,0,32,-1,0,66],[187.5,1.5,0,39,-1,0,78],[189.0,6.0,1,14,0,3,36],[189.0,6.0,1,21,0,3,48],[190.0,1.0,1,25,-1,2,54],[190.0,1.0,1,27,-1,2,58],[190.0,1.0,1,30,-1,2,63],[190.0,1.0,0,32,-1,0,66],[190.0,1.0,0,34,-1,0,70],[190.0,1.0,0,37,-1,0,75],[190.0,1.0,0,39,-1,0,78],[191.0,1.0,1,25,-1,2,54],[191.0,1.0,1,27,-1,2,58],[191.0,1.0,1,30,-1,2,63],[191.0,1.0,0,32,-1,0,66],[191.0,1.0,0,34,-1,0,70],[191.0,1.0,0,37,-1,0,75],[191.0,1.0,0,39,-1,0,78],[192.0,1.0,1,25,-1,2,54],[192.0,1.0,1,27,-1,2,58],[192.0,1.0,1,30,-1,2,63],[192.0,1.0,0,32,-1,0,66],[192.0,1.0,0,34,-1,0,70],[192.0,1.0,0,37,-1,0,75],[192.0,1.0,0,39,-1,0,78],[193.0,1.0,1,25,-1,2,54],[193.0,1.0,1,27,-1,2,58],[193.0,1.0,1,30,-1,2,63],[193.0,1.0,0,32,-1,0,66],[193.0,1.0,0,34,-1,0,70],[193.0,1.0,0,37,-1,0,75],[193.0,1.0,0,39,-1,0,78],[194.0,1.0,1,26,-1,2,56],[194.0,1.0,1,28,0,2,60],[194.0,1.0,1,31,0,2,65],[194.0,1.0,0,33,-1,0,68],[194.0,1.0,0,35,0,0,72],[194.0,1.0,0,38,0,0,77],[194.0,1.0,0,40,-1,0,80],[195.0,3.0,1,25,-1,2,54],[195.0,3.0,1,27,-1,2,58],[195.0,3.0,1,30,-1,2,63],[195.0,3.0,0,32,-1,0,66],[195.0,3.0,0,34,-1,0,70],[195.0,3.0,0,37,-1,0,75],[195.0,3.0,0,39,-1,0,78],[198.0,6.0,1,15,-1,3,37],[198.0,6.0,1,22,-1,3,49],[199.5,1.5,1,25,-1,2,54],[199.5,1.5,0,32,-1,0,66],[199.5,1.5,0,39,-1,0,78],[199.5,4.5,1,27,-1,3,58],[199.5,4.5,1,29,-1,3,61],[199.5,4.5,0,34,-1,1,70],[199.5,4.5,0,36,-1,1,73],[201.0,1.5,1,26,-1,2,56],[201.0,1.5,0,33,-1,0,68],[201.0,1.5,0,40,-1,0,80],[202.5,1.5,1,30,-1,2,63],[202.5,1.5,0,37,-1,0,75],[202.5,1.5,0,44,-1,0,87],[204.0,1.5,1,29,-1,2,61],[204.0,1.5,0,36,-1,0,73],[204.0,1.5,0,43,-1,0,85],[204.0,3.0,1,32,-1,3,66],[204.0,3.0,1,34,-1,3,70],[204.0,3.0,0,39,-1,1,78],[204.0,3.0,0,41,-1,1,82],[205.5,1.5,1,27,-1,2,58],[205.5,1.5,0,34,-1,0,70],[205.5,1.5,0,41,-1,0,82],[207.0,6.0,1,16,-1,3,39],[207.0,6.0,1,23,-1,3,51],[208.0,1.0,1,27,-1,2,58],[208.0,1.0,1,29,-1,2,61],[208.0,1.0,1,32,-1,2,66],[208.0,1.0,0,34,-1,0,70],[208.0,1.0,0,39,-1,0,78],[208.0,1.0,0,41,-1,0,82],[209.0,1.0,1,27,-1,2,58],[209.0,1.0,1,29,-1,2,61],[209.0,1.0,1,32,-1,2,66],[209.0,1.0,0,34,-1,0,70],[209.0,1.0,0,39,-1,0,78],[209.0,1.0,0,41,-1,0,82],[210.0,1.0,1,27,-1,2,58],[210.0,1.0,1,29,-1,2,61],[210.0,1.0,1,32,-1,2,66],[210.0,1.0,0,34,-1,0,70],[210.0,1.0,0,39,-1,0,78],[210.0,1.0,0,41,-1,0,82],[211.0,1.0,1,27,-1,2,58],[211.0,1.0,1,29,-1,2,61],[211.0,1.0,1,32,-1,2,66],[211.0,1.0,0,34,-1,0,70],[211.0,1.0,0,39,-1,0,78],[211.0,1.0,0,41,-1,0,82],[212.0,1.0,1,28,0,2,60],[212.0,1.0,1,30,-1,2,63],[212.0,1.0,1,33,-1,2,68],[212.0,1.0,0,35,0,0,72],[212.0,1.0,0,40,-1,0,80],[212.0,1.0,0,42,0,0,84],[213.0,1.0,1,27,-1,2,58],[213.0,1.0,1,29,-1,2,61],[213.0,1.0,1,32,-1,2,66],[213.0,1.0,0,34,-1,0,70],[213.0,1.0,0,39,-1,0,78],[213.0,1.0,0,41,-1,0,82],[214.0,1.0,1,29,-1,2,61],[214.0,1.0,1,32,-1,2,66],[214.0,1.0,1,34,-1,2,70],[214.0,1.0,0,36,-1,0,73],[214.0,1.0,0,41,-1,0,82],[214.0,1.0,0,43,-1,0,85],[215.0,1.0,1,30,-1,2,63],[215.0,1.0,1,32,-1,2,66],[215.0,1.0,1,34,-1,2,70],[215.0,1.0,0,37,-1,0,75],[215.0,1.0,0,41,-1,0,82],[215.0,1.0,0,44,-1,0,87],[216.0,6.0,1,31,0,2,65],[216.0,6.0,1,33,-1,2,68],[216.0,6.0,1,36,-1,2,73],[216.0,6.0,1,38,0,2,77],[216.0,6.0,0,40,-1,0,80],[216.0,6.0,0,43,-1,0,85],[216.0,6.0,0,47,-1,0,92],[222.0,3.0,1,31,-1,2,64],[222.0,3.0,1,33,-1,2,68],[222.0,3.0,1,34,-1,2,70],[222.0,3.0,1,36,-1,2,73],[222.0,3.0,1,38,-1,2,76],[222.0,3.0,0,40,-1,0,80],[222.0,3.0,0,43,-1,0,85],[222.0,3.0,0,47,-1,0,92],[225.0,6.0,1,30,-1,2,63],[225.0,6.0,1,32,-1,2,66],[225.0,6.0,1,33,-1,2,68],[225.0,6.0,1,36,-1,2,73],[225.0,6.0,1,37,-1,2,75],[225.0,6.0,0,40,-1,0,80],[225.0,6.0,0,43,-1,0,85],[225.0,6.0,0,47,-1,0,92],[231.0,3.0,1,26,-1,2,56],[231.0,3.0,1,30,-1,2,63],[231.0,3.0,1,32,-1,2,66],[231.0,3.0,0,33,-1,0,68],[231.0,3.0,1,35,0,2,72],[231.0,3.0,0,37,-1,0,75],[231.0,3.0,0,40,-1,0,80],[234.0,0.5,1,15,-1,2,37],[234.0,3.0,1,15,-1,3,37],[234.0,6.0,0,31,0,0,65],[234.0,6.0,0,33,-1,0,68],[234.5,0.5,1,19,-1,2,44],[235.0,0.5,1,22,-1,2,49],[235.5,0.5,1,24,0,2,53],[236.0,0.5,0,26,-1,2,56],[236.5,0.5,0,29,-1,2,61],[237.0,0.5,1,17,0,2,41],[237.0,3.0,1,17,0,3,41],[237.5,0.5,1,21,0,2,48],[238.0,0.5,1,24,0,2,53],[238.5,0.5,0,26,-1,2,56],[239.0,0.5,0,28,0,2,60],[239.5,0.5,0,31,0,2,65],[240.0,0.5,1,19,-1,2,44],[240.0,2.0,0,33,-1,0,68],[240.0,2.0,0,35,-1,0,71],[240.0,3.0,1,19,-1,3,44],[240.5,0.5,1,24,-1,2,52],[241.0,0.5,1,26,-1,2,56],[241.5,0.5,0,28,-1,2,59],[242.0,0.5,0,31,-1,2,64],[242.0,1.0,0,36,-1,0,73],[242.5,0.5,0,33,-1,2,68],[243.0,0.5,1,15,-1,2,37],[243.0,3.0,1,15,-1,3,37],[243.0,6.0,0,31,0,0,65],[243.0,6.0,0,33,-1,0,68],[243.5,0.5,1,19,-1,2,44],[244.0,0.5,1,22,-1,2,49],[244.5,0.5,1,24,0,2,53],[245.0,0.5,0,26,-1,2,56],[245.5,0.5,0,29,-1,2,61],[246.0,0.5,1,17,0,2,41],[246.0,3.0,1,17,0,3,41],[246.5,0.5,1,21,0,2,48],[247.0,0.5,1,24,0,2,53],[247.5,0.5,0,26,-1,2,56],[248.0,0.5,0,28,0,2,60],[248.5,0.5,0,31,0,2,65],[249.0,0.5,1,19,-1,2,44],[249.0,2.0,0,33,-1,0,68],[249.0,2.0,0,35,-1,0,71],[249.0,3.0,1,19,-1,3,44],[249.5,0.5,1,24,-1,2,52],[250.0,0.5,1,26,-1,2,56],[250.5,0.5,0,28,-1,2,59],[251.0,0.5,0,33,-1,2,68],[251.0,1.0,0,33,-1,0,68],[251.5,0.5,0,31,-1,2,64],[252.0,0.5,1,15,-1,2,37],[252.0,2.0,0,31,0,0,65],[252.0,2.0,0,36,-1,0,73],[252.5,0.5,1,19,-1,2,44],[253.0,0.5,1,22,-1,2,49],[253.5,0.5,1,24,0,2,53],[254.0,0.5,1,26,-1,2,56],[254.0,1.0,0,33,-1,0,68],[254.0,1.0,0,37,-1,0,75],[254.5,0.5,1,29,-1,2,61],[255.0,0.5,1,31,0,2,65],[255.0,3.0,0,36,-1,0,73],[255.0,3.0,0,38,0,0,77],[255.5,0.5,1,33,-1,2,68],[256.0,0.5,1,31,0,2,65],[256.5,0.5,1,29,-1,2,61],[257.0,0.5,1,26,-1,2,56],[257.5,0.5,1,24,0,2,53],[258.0,0.5,1,26,-1,2,56],[258.0,2.0,0,31,0,0,65],[258.0,2.0,0,36,-1,0,73],[258.5,0.5,1,24,0,2,53],[259.0,0.5,1,22,-1,2,49],[259.5,0.5,1,19,-1,2,44],[260.0,0.5,1,22,-1,2,49],[260.0,1.0,0,36,-1,0,73],[260.0,1.0,0,38,0,0,77],[260.5,0.5,1,19,-1,2,44],[261.0,0.5,1,16,-1,2,39],[261.0,1.0,0,37,-1,0,75],[261.0,1.0,0,39,0,0,79],[261.5,0.5,1,20,-1,2,46],[262.0,0.5,1,23,-1,2,51],[262.0,1.0,0,36,-1,0,73],[262.0,1.0,0,38,0,0,77],[262.5,0.5,1,25,0,2,55],[263.0,0.5,1,27,-1,2,58],[263.0,1.0,0,34,-1,0,70],[263.0,1.0,0,36,-1,0,73],[263.5,0.5,1,30,-1,2,63],[264.0,0.5,1,32,0,2,67],[264.0,1.0,1,32,0,1,67],[264.0,3.0,0,34,-1,0,70],[264.0,3.0,0,36,-1,0,73],[264.5,0.5,1,30,-1,2,63],[265.0,0.5,1,27,-1,2,58],[265.0,1.0,0,31,0,1,65],[265.5,0.5,1,25,0,2,55],[266.0,0.5,1,23,-1,2,51],[266.0,1.0,0,29,-1,1,61],[266.5,0.5,1,20,-1,2,46],[267.0,0.5,1,16,-1,2,39],[267.0,1.5,0,29,-1,1,61],[267.5,0.5,1,20,-1,2,46],[268.0,0.5,1,23,-1,2,51],[268.5,0.5,1,25,0,2,55],[268.5,1.5,0,27,-1,1,58],[269.0,0.5,1,23,-1,2,51],[269.5,0.5,1,20,-1,2,46],[270.0,0.5,1,19,-1,2,44],[270.0,3.0,1,19,-1,3,44],[270.0,6.0,0,34,-1,0,70],[270.5,0.5,1,23,-1,2,51],[271.0,0.5,1,25,-1,2,54],[271.5,0.5,1,27,-1,2,58],[272.0,0.5,0,28,0,2,60],[272.5,0.5,0,32,-1,2,66],[273.0,0.5,1,18,-1,2,42],[273.0,3.0,1,18,-1,3,42],[273.5,0.5,1,22,-1,2,49],[274.0,0.5,1,25,-1,2,54],[274.5,0.5,1,27,-1,2,58],[275.0,0.5,0,29,-1,2,61],[275.5,0.5,0,32,-1,2,66],[276.0,0.5,1,17,0,2,41],[276.0,2.0,0,35,0,0,72],[276.0,3.0,1,17,0,3,41],[276.5,0.5,1,21,0,2,48],[277.0,0.5,1,24,0,2,53],[277.5,0.5,1,26,-1,2,56],[278.0,0.5,0,33,-1,1,68],[278.0,1.0,1,28,0,2,60],[278.0,1.0,0,38,0,0,77],[278.5,0.5,0,31,0,1,65],[279.0,0.5,1,19,-1,2,44],[279.0,3.0,1,19,-1,3,44],[279.0,6.0,0,34,-1,0,70],[279.5,0.5,1,23,-1,2,51],[280.0,0.5,1,25,-1,2,54],[280.5,0.5,1,27,-1,2,58],[281.0,0.5,0,28,0,2,60],[281.5,0.5,0,32,-1,2,66],[282.0,0.5,1,18,-1,2,42],[282.0,3.0,1,18,-1,3,42],[282.5,0.5,1,22,-1,2,49],[283.0,0.5,1,25,-1,2,54],[283.5,0.5,1,27,-1,2,58],[284.0,0.5,0,29,-1,2,61],[284.5,0.5,0,32,-1,2,66],[285.0,0.5,1,17,0,2,41],[285.0,2.0,0,35,0,0,72],[285.0,3.0,1,17,0,3,41],[285.5,0.5,1,21,0,2,48],[286.0,0.5,1,24,0,2,53],[286.5,0.5,1,26,-1,2,56],[287.0,0.5,0,33,-1,1,68],[287.0,1.0,1,28,0,2,60],[287.0,1.0,0,38,0,0,77],[287.5,0.5,0,31,0,1,65],[288.0,0.5,1,16,-1,2,39],[288.0,3.0,1,16,-1,3,39],[288.0,4.5,0,39,-1,0,78],[288.5,0.5,1,20,-1,2,46],[289.0,0.5,1,23,-1,2,51],[289.5,0.5,1,25,-1,2,54],[290.0,0.5,1,27,-1,2,58],[290.5,0.5,1,30,-1,2,63],[291.0,0.5,0,39,-1,1,78],[291.0,1.5,1,32,-1,3,66],[291.5,0.5,0,32,-1,1,66],[292.0,0.5,0,34,-1,1,70],[292.5,0.5,0,38,0,1,77],[292.5,1.5,1,31,0,3,65],[292.5,1.5,0,38,0,0,77],[293.0,0.5,0,32,-1,1,66],[293.5,0.5,0,34,-1,1,70],[294.0,0.5,0,36,0,1,74],[294.0,1.5,1,29,0,3,62],[294.0,1.5,0,36,0,0,74],[294.5,0.5,0,32,-1,1,66],[295.0,0.5,0,34,-1,1,70],[295.5,0.5,0,37,-1,1,75],[295.5,1.5,1,30,-1,3,63],[295.5,1.5,0,37,-1,0,75],[296.0,0.5,0,32,-1,1,66],[296.5,0.5,0,34,-1,1,70],[297.0,0.5,1,29,0,2,62],[297.0,3.0,1,29,0,3,62],[297.0,6.0,0,41,-1,0,82],[297.5,0.5,1,32,-1,2,66],[298.0,0.5,1,34,-1,2,70],[298.5,0.5,0,34,-1,2,70],[299.0,0.5,0,39,-1,2,78],[299.5,0.5,0,41,-1,2,82],[300.0,0.5,1,30,-1,2,63],[300.0,3.0,1,30,-1,3,63],[300.5,0.5,1,32,-1,2,66],[301.0,0.5,1,34,-1,2,70],[301.5,0.5,0,34,-1,2,70],[302.0,0.5,0,39,-1,2,78],[302.5,0.5,0,41,-1,2,82],[303.0,0.5,1,28,0,2,60],[303.0,3.0,1,26,-1,3,56],[303.0,3.0,0,40,-1,0,80],[303.5,0.5,1,30,0,2,64],[304.0,0.5,1,33,-1,2,68],[304.5,0.5,0,35,0,2,72],[305.0,0.5,0,37,0,2,76],[305.5,0.5,0,40,-1,2,80],[306.0,0.5,1,22,-1,2,49],[306.0,3.0,1,22,-1,3,49],[306.0,6.0,0,38,0,0,77],[306.0,6.0,0,40,-1,0,80],[306.5,0.5,1,26,-1,2,56],[307.0,0.5,1,29,-1,2,61],[307.5,0.5,1,31,0,2,65],[308.0,0.5,0,33,-1,2,68],[308.5,0.5,0,36,-1,2,73],[309.0,0.5,1,26,-1,2,56],[309.0,3.0,1,24,0,3,53],[309.5,0.5,1,28,0,2,60],[310.0,0.5,1,31,0,2,65],[310.5,0.5,1,33,-1,2,68],[311.0,0.5,0,35,0,2,72],[311.5,0.5,0,38,0,2,77],[312.0,0.5,1,28,-1,2,59],[312.0,2.0,0,40,-1,0,80],[312.0,2.0,0,42,-1,0,83],[312.0,3.0,1,26,-1,3,56],[312.5,0.5,1,31,-1,2,64],[313.0,0.5,1,33,-1,2,68],[313.5,0.5,0,35,-1,2,71],[314.0,0.5,0,38,-1,2,76],[314.0,1.0,0,43,-1,0,85],[314.5,0.5,0,40,-1,2,80],[315.0,0.5,1,22,-1,2,49],[315.0,3.0,1,22,-1,3,49],[315.0,6.0,0,38,0,0,77],[315.0,6.0,0,40,-1,0,80],[315.5,0.5,1,26,-1,2,56],[316.0,0.5,1,29,-1,2,61],[316.5,0.5,1,31,0,2,65],[317.0,0.5,0,33,-1,2,68],[317.5,0.5,0,36,-1,2,73],[318.0,0.5,1,26,-1,2,56],[318.0,3.0,1,24,0,3,53],[318.5,0.5,1,28,0,2,60],[319.0,0.5,1,31,0,2,65],[319.5,0.5,1,33,-1,2,68],[320.0,0.5,0,35,0,2,72],[320.5,0.5,0,38,0,2,77],[321.0,0.5,1,28,-1,2,59],[321.0,2.0,0,40,-1,0,80],[321.0,2.0,0,42,-1,0,83],[321.0,3.0,1,26,-1,3,56],[321.5,0.5,1,31,-1,2,64],[322.0,0.5,1,33,-1,2,68],[322.5,0.5,0,35,-1,2,71],[323.0,0.5,0,40,-1,2,80],[323.0,1.0,0,40,-1,0,80],[323.5,0.5,0,38,-1,2,76],[324.0,0.5,1,28,1,2,61],[324.0,1.5,0,42,1,1,85],[324.0,2.0,0,42,1,0,85],[324.0,3.0,1,27,0,3,59],[324.5,0.5,1,30,0,2,64],[325.0,0.5,1,32,1,2,68],[325.5,0.5,0,35,1,1,73],[325.5,1.5,1,34,0,2,71],[326.0,0.5,0,39,1,1,80],[326.0,1.0,0,39,1,0,80],[326.5,0.5,0,37,0,1,76],[327.0,0.5,1,30,0,2,64],[327.0,1.5,0,44,0,1,88],[327.0,2.0,0,44,0,0,88],[327.0,3.0,1,28,1,3,61],[327.5,0.5,1,32,1,2,68],[328.0,0.5,1,34,0,2,71],[328.5,0.5,0,37,0,1,76],[328.5,1.5,1,35,1,2,73],[329.0,0.5,0,42,1,1,85],[329.0,1.0,0,42,1,0,85],[329.5,0.5,0,39,1,1,80],[330.0,0.5,1,32,1,2,68],[330.0,1.5,0,46,1,1,92],[330.0,2.0,0,46,1,0,92],[330.0,3.0,1,30,0,3,64],[330.5,0.5,1,34,0,2,71],[331.0,0.5,1,35,1,2,73],[331.5,0.5,0,39,1,1,80],[331.5,1.5,1,37,0,2,76],[332.0,0.5,0,44,0,1,88],[332.0,1.0,0,44,0,0,88],[332.5,0.5,0,41,0,1,83],[333.0,0.5,1,32,1,2,68],[333.0,3.0,1,32,1,3,68],[333.0,3.0,0,46,1,0,92],[333.5,0.5,1,33,0,2,69],[334.0,0.5,1,35,1,2,73],[334.5,0.5,0,39,1,2,80],[335.0,0.5,0,42,1,2,85],[335.5,0.5,0,40,0,2,81],[336.0,0.5,1,31,1,2,66],[336.0,3.0,1,31,1,3,66],[336.0,6.0,0,45,1,0,90],[336.5,0.5,1,33,0,2,69],[337.0,0.5,1,35,1,2,73],[337.5,0.5,0,38,1,2,78],[338.0,0.5,0,42,1,2,85],[338.5,0.5,0,40,0,2,81],[339.0,0.5,1,31,1,2,66],[339.0,3.0,1,30,1,3,65],[339.5,0.5,1,33,0,2,69],[340.0,0.5,1,35,1,2,73],[340.5,0.5,0,38,1,2,78],[341.0,0.5,0,42,1,2,85],[341.5,0.5,0,40,0,2,81],[342.0,0.5,1,31,1,2,66],[342.0,3.0,1,30,0,3,64],[342.0,6.0,0,45,1,0,90],[342.5,0.5,1,33,0,2,69],[343.0,0.5,1,35,1,2,73],[343.5,0.5,0,38,1,2,78],[344.0,0.5,0,42,1,2,85],[344.5,0.5,0,40,0,2,81],[345.0,0.5,1,31,1,2,66],[345.0,3.0,1,29,1,3,63],[345.5,0.5,1,33,0,2,69],[346.0,0.5,1,35,1,2,73],[346.5,0.5,0,38,1,2,78],[347.0,0.5,0,42,1,2,85],[347.5,0.5,0,40,0,2,81],[348.0,0.5,1,30,0,2,64],[348.0,2.0,0,47,0,0,93],[348.0,3.0,1,28,1,3,61],[348.5,0.5,1,33,0,2,69],[349.0,0.5,1,35,1,2,73],[349.5,0.5,1,37,0,2,76],[350.0,0.5,0,42,1,2,85],[350.0,1.0,0,49,1,0,97],[350.5,0.5,0,35,1,2,73],[351.0,0.5,1,27,0,2,59],[351.0,3.0,1,27,0,3,59],[351.0,6.0,0,38,1,0,78],[351.5,0.5,1,29,1,2,63],[352.0,0.5,1,31,1,2,66],[352.5,0.5,0,31,1,2,66],[353.0,0.5,0,35,1,2,73],[353.5,0.5,0,33,0,2,69],[354.0,0.5,1,26,0,2,57],[354.0,3.0,1,26,0,3,57],[354.5,0.5,1,28,1,2,61],[355.0,0.5,1,30,0,2,64],[355.5,0.5,0,31,1,2,66],[356.0,0.5,0,35,1,2,73],[356.5,0.5,0,33,0,2,69],[357.0,0.5,1,25,1,2,56],[357.0,2.0,0,40,0,0,81],[357.0,3.0,1,25,1,3,56],[357.5,0.5,1,28,1,2,61],[358.0,0.5,1,30,0,2,64],[358.5,0.5,1,33,0,2,69],[359.0,0.5,0,37,0,2,76],[359.0,1.0,0,42,1,0,85],[359.5,0.5,0,40,0,2,81],[360.0,0.5,1,24,1,2,54],[360.0,1.0,0,42,1,0,85],[360.0,1.0,0,44,0,0,88],[360.0,9.0,1,24,1,3,54],[360.5,0.5,1,28,1,2,61],[361.0,0.5,1,30,0,2,64],[361.0,1.0,0,41,0,0,83],[361.0,1.0,0,43,1,0,87],[361.5,0.5,1,31,1,2,66],[362.0,0.5,1,33,0,2,69],[362.0,1.0,0,40,0,0,81],[362.0,1.0,0,42,1,0,85],[362.5,0.5,1,35,1,2,73],[363.0,0.5,1,37,0,2,76],[363.0,1.5,0,39,1,0,80],[363.0,1.5,0,41,0,0,83],[363.5,0.5,1,38,1,2,78],[364.0,0.5,1,37,0,2,76],[364.5,0.5,1,35,1,2,73],[364.5,2.5,0,38,1,0,78],[364.5,2.5,0,40,0,0,81],[365.0,0.5,1,33,0,2,69],[365.5,0.5,1,31,1,2,66],[366.0,0.5,1,30,0,2,64],[366.5,0.5,1,31,1,2,66],[367.0,0.5,1,30,0,2,64],[367.0,1.0,0,37,0,0,76],[367.0,1.0,0,39,1,0,80],[367.5,0.5,1,28,1,2,61],[368.0,0.5,1,26,0,2,57],[368.0,1.0,0,36,1,0,75],[368.0,1.0,0,38,1,0,78],[368.5,0.5,1,24,1,2,54],[369.0,0.5,1,17,1,2,42],[369.0,1.0,0,35,1,0,73],[369.0,1.0,0,37,0,0,76],[369.5,0.5,1,21,1,2,49],[370.0,0.5,1,23,0,2,52],[370.0,1.0,0,34,0,0,71],[370.0,1.0,0,36,1,0,75],[370.5,0.5,1,24,1,2,54],[371.0,0.5,1,26,0,2,57],[371.0,1.0,0,33,0,0,69],[371.0,1.0,0,35,1,0,73],[371.5,0.5,1,28,1,2,61],[372.0,0.5,1,30,0,2,64],[372.0,1.0,0,32,1,0,68],[372.0,1.0,0,34,0,0,71],[372.5,0.5,1,28,1,2,61],[373.0,0.5,1,26,0,2,57],[373.0,1.0,0,31,1,0,66],[373.0,1.0,0,33,0,0,69],[373.5,0.5,1,24,1,2,54],[374.0,0.5,1,23,0,2,52],[374.0,2.0,0,30,0,0,64],[374.0,2.0,0,32,1,0,68],[374.5,0.5,1,21,1,2,49],[375.0,0.5,1,17,1,2,42],[375.0,3.0,0,26,0,1,57],[375.5,0.5,1,21,1,2,49],[376.0,0.5,1,17,1,2,42],[376.0,1.0,0,29,1,0,63],[376.0,1.0,0,31,1,0,66],[376.5,0.5,1,21,1,2,49],[377.0,0.5,1,17,1,2,42],[377.0,1.0,0,28,1,0,61],[377.0,1.0,0,30,0,0,64],[377.5,0.5,1,21,1,2,49],[378.0,0.5,1,19,-1,2,44],[378.0,2.0,0,25,-1,1,54],[378.0,6.0,0,29,-1,0,61],[378.0,6.0,0,30,-1,0,63],[378.5,0.5,1,23,-1,2,51],[379.0,0.5,1,19,-1,2,44],[379.5,0.5,1,23,-1,2,51],[380.0,0.5,1,19,-1,2,44],[380.0,1.0,0,26,-1,1,56],[380.5,0.5,1,23,-1,2,51],[381.0,0.5,1,19,-1,2,44],[381.0,2.0,0,27,-1,1,58],[381.5,0.5,1,23,-1,2,51],[382.0,0.5,1,19,-1,2,44],[382.5,0.5,1,23,-1,2,51],[383.0,0.5,1,19,-1,2,44],[383.0,1.0,0,29,-1,1,61],[383.5,0.5,1,23,-1,2,51],[384.0,0.5,1,19,-1,2,44],[384.0,2.0,0,30,-1,0,63],[384.0,2.0,0,32,-1,0,66],[384.0,3.0,0,28,0,1,60],[384.5,0.5,1,23,-1,2,51],[385.0,0.5,1,19,-1,2,44],[385.5,0.5,1,23,-1,2,51],[386.0,0.5,1,19,-1,2,44],[386.0,1.0,0,30,-1,0,63],[386.0,1.0,0,32,-1,0,66],[386.0,1.0,0,34,-1,0,70],[386.5,0.5,1,23,-1,2,51],[387.0,0.5,1,19,-1,2,44],[387.0,2.0,0,25,-1,1,54],[387.0,6.0,0,29,-1,0,61],[387.0,6.0,0,30,-1,0,63],[387.5,0.5,1,23,-1,2,51],[388.0,0.5,1,19,-1,2,44],[388.5,0.5,1,23,-1,2,51],[389.0,0.5,1,19,-1,2,44],[389.0,1.0,0,26,-1,1,56],[389.5,0.5,1,23,-1,2,51],[390.0,0.5,1,19,-1,2,44],[390.0,2.0,0,27,-1,1,58],[390.5,0.5,1,23,-1,2,51],[391.0,0.5,1,19,-1,2,44],[391.5,0.5,1,23,-1,2,51],[392.0,0.5,1,19,-1,2,44],[392.0,1.0,0,29,-1,1,61],[392.5,0.5,1,23,-1,2,51],[393.0,0.5,1,19,-1,2,44],[393.0,2.0,0,30,-1,0,63],[393.0,2.0,0,32,-1,0,66],[393.0,3.0,0,28,0,1,60],[393.5,0.5,1,23,-1,2,51],[394.0,0.5,1,19,-1,2,44],[394.5,0.5,1,23,-1,2,51],[395.0,0.5,1,19,-1,2,44],[395.0,1.0,0,30,-1,0,63],[395.0,2.0,0,32,-1,0,66],[395.0,2.0,0,34,-1,0,70],[395.5,0.5,1,23,-1,2,51],[396.0,0.5,1,19,-1,2,44],[396.0,1.0,0,29,-1,0,61],[396.5,0.5,1,16,-1,2,39],[397.0,0.5,1,19,-1,2,44],[397.0,1.0,0,33,-1,0,68],[397.0,1.0,0,35,0,0,72],[397.0,1.0,0,38,0,0,77],[397.5,0.5,1,23,-1,2,51],[398.0,0.5,1,19,-1,2,44],[398.0,1.0,0,32,-1,0,66],[398.0,1.0,0,34,-1,0,70],[398.0,1.0,0,37,-1,0,75],[398.5,0.5,1,23,-1,2,51],[399.0,0.5,1,26,-1,2,56],[399.0,1.0,0,29,-1,1,61],[399.0,3.0,0,32,-1,0,66],[399.0,3.0,0,34,-1,0,70],[399.5,0.5,1,23,-1,2,51],[400.0,0.5,1,26,-1,2,56],[400.0,1.0,0,27,-1,1,58],[400.5,0.5,1,30,-1,2,63],[401.0,0.5,1,26,-1,2,56],[401.0,1.0,0,29,-1,1,61],[401.5,0.5,1,23,-1,2,51],[402.0,0.5,1,26,-1,2,56],[402.0,1.0,0,27,-1,1,58],[402.0,3.0,0,32,-1,0,66],[402.0,3.0,0,33,-1,0,68],[402.5,0.5,1,23,-1,2,51],[403.0,0.5,1,19,-1,2,44],[403.0,1.0,0,28,0,1,60],[403.5,0.5,1,23,-1,2,51],[404.0,0.5,1,19,-1,2,44],[404.0,1.0,0,30,-1,1,63],[404.5,0.5,1,16,-1,2,39],[405.0,0.5,1,19,-1,2,44],[405.0,1.0,0,29,-1,0,61],[405.0,1.0,0,32,-1,0,66],[405.0,1.0,0,34,-1,0,70],[405.5,0.5,1,16,-1,2,39],[406.0,0.5,1,19,-1,2,44],[406.0,1.0,0,33,-1,0,68],[406.0,1.0,0,35,0,0,72],[406.0,1.0,0,38,0,0,77],[406.5,0.5,1,23,-1,2,51],[407.0,0.5,1,19,-1,2,44],[407.0,1.0,0,32,-1,0,66],[407.0,1.0,0,34,-1,0,70],[407.0,1.0,0,37,-1,0,75],[407.5,0.5,1,23,-1,2,51],[408.0,0.5,1,26,-1,2,56],[408.0,1.0,0,29,-1,1,61],[408.0,3.0,0,32,-1,0,66],[408.0,3.0,0,34,-1,0,70],[408.5,0.5,1,23,-1,2,51],[409.0,0.5,1,26,-1,2,56],[409.0,1.0,0,27,-1,1,58],[409.5,0.5,1,30,-1,2,63],[410.0,0.5,1,26,-1,2,56],[410.0,1.0,0,29,-1,1,61],[410.5,0.5,1,23,-1,2,51],[411.0,0.5,1,26,-1,2,56],[411.0,1.0,0,27,-1,1,58],[411.0,3.0,0,32,-1,0,66],[411.0,3.0,0,33,-1,0,68],[411.5,0.5,1,23,-1,2,51],[412.0,0.5,1,26,-1,2,56],[412.0,1.0,0,28,0,1,60],[412.5,0.5,1,23,-1,2,51],[413.0,0.5,1,26,-1,2,56],[413.0,1.0,0,30,-1,1,63],[413.5,0.5,1,23,-1,2,51],[414.0,0.5,0,37,-1,1,75],[414.0,2.0,1,25,-1,3,54],[414.0,6.0,1,29,-1,2,61],[414.0,6.0,0,37,-1,0,75],[414.5,0.5,0,30,-1,1,63],[415.0,0.5,0,32,-1,1,66],[415.5,0.5,0,34,-1,1,70],[416.0,0.5,0,32,-1,1,66],[416.0,1.0,1,26,-1,3,56],[416.5,0.5,0,30,-1,1,63],[417.0,2.0,1,27,-1,3,58],[417.5,0.5,0,30,-1,1,63],[418.0,0.5,0,32,-1,1,66],[418.5,0.5,0,34,-1,1,70],[419.0,0.5,0,32,-1,1,66],[419.0,1.0,1,29,-1,3,61],[419.5,0.5,0,30,-1,1,63],[420.0,0.5,1,28,0,2,60],[420.0,2.0,0,39,-1,0,78],[420.0,3.0,1,28,0,3,60],[420.5,0.5,1,30,-1,2,63],[421.0,0.5,1,32,-1,2,66],[421.5,0.5,1,34,-1,2,70],[422.0,0.5,0,35,0,2,72],[422.0,1.0,0,41,-1,0,82],[422.5,0.5,0,37,-1,2,75],[423.0,0.5,0,37,-1,1,75],[423.0,2.0,1,25,-1,3,54],[423.0,6.0,1,29,-1,2,61],[423.0,6.0,0,37,-1,0,75],[423.5,0.5,0,30,-1,1,63],[424.0,0.5,0,32,-1,1,66],[424.5,0.5,0,34,-1,1,70],[425.0,0.5,0,32,-1,1,66],[425.0,1.0,1,26,-1,3,56],[425.5,0.5,0,30,-1,1,63],[426.0,2.0,1,27,-1,3,58],[426.5,0.5,0,30,-1,1,63],[427.0,0.5,0,32,-1,1,66],[427.5,0.5,0,34,-1,1,70],[428.0,0.5,0,32,-1,1,66],[428.0,1.0,1,29,-1,3,61],[428.5,0.5,0,30,-1,1,63],[429.0,0.5,1,28,0,2,60],[429.0,2.0,0,39,-1,0,78],[429.0,3.0,1,28,0,3,60],[429.5,0.5,1,30,-1,2,63],[430.0,0.5,1,32,-1,2,66],[430.5,0.5,1,34,-1,2,70],[431.0,0.5,0,35,0,2,72],[431.0,1.0,0,41,-1,0,82],[431.5,0.5,0,37,-1,2,75],[432.0,0.5,1,32,-1,2,66],[432.0,9.0,1,32,-1,3,66],[432.0,12.0,0,44,-1,0,87],[432.5,0.5,1,34,-1,2,70],[433.0,0.5,1,36,-1,2,73],[433.5,0.5,0,37,-1,2,75],[434.0,0.5,0,39,-1,2,78],[434.5,0.5,0,41,-1,2,82],[435.0,0.5,1,32,-1,2,66],[435.5,0.5,1,34,-1,2,70],[436.0,0.5,1,36,-1,2,73],[436.5,0.5,0,37,-1,2,75],[437.0,0.5,0,39,-1,2,78],[437.5,0.5,0,42,0,2,84],[438.0,0.5,1,32,-1,2,66],[438.5,0.5,1,34,-1,2,70],[439.0,0.5,1,36,-1,2,73],[439.5,0.5,0,37,-1,2,75],[440.0,0.5,0,39,-1,2,78],[440.5,0.5,0,41,-1,2,82],[441.0,0.5,1,32,-1,2,66],[441.0,9.0,1,32,-1,3,66],[441.5,0.5,1,33,0,2,69],[442.0,0.5,1,36,-1,2,73],[442.5,0.5,0,37,-1,2,75],[443.0,0.5,0,39,-1,2,78],[443.5,0.5,0,40,0,2,81],[444.0,0.5,1,32,-1,2,66],[444.0,3.0,0,43,-1,0,85],[444.5,0.5,1,33,0,2,69],[445.0,0.5,1,36,-1,2,73],[445.5,0.5,0,37,-1,2,75],[446.0,0.5,0,39,-1,2,78],[446.5,0.5,0,42,-1,2,83],[447.0,0.5,1,32,-1,2,66],[447.0,3.0,0,44,-1,0,87],[447.5,0.5,1,33,0,2,69],[448.0,0.5,1,36,-1,2,73],[448.5,0.5,0,37,-1,2,75],[449.0,0.5,0,39,-1,2,78],[449.5,0.5,0,40,0,2,81],[450.0,0.5,1,31,0,2,65],[450.0,6.0,1,31,0,3,65],[450.5,0.5,1,33,-1,2,68],[451.0,0.5,1,35,0,2,72],[451.5,0.5,1,38,0,2,77],[452.0,0.5,1,40,-1,2,80],[452.5,0.5,1,42,0,2,84],[453.0,3.0,0,45,0,0,89],[453.0,3.0,0,47,-1,2,92],[453.0,3.0,0,47,-1,0,92],[456.0,3.0,1,31,0,3,65],[456.0,4.0,0,45,0,0,89],[459.0,0.5,1,31,0,2,65],[459.0,6.0,1,31,0,3,65],[459.5,0.5,1,33,0,2,69],[460.0,0.5,1,35,0,2,72],[460.0,1.0,0,42,0,0,84],[460.0,1.0,0,44,-1,0,87],[460.5,0.5,1,37,-1,2,75],[461.0,0.5,1,38,0,2,77],[461.0,1.0,0,43,-1,0,85],[461.0,1.0,0,45,0,0,89],[461.5,0.5,1,40,0,2,81],[462.0,7.0,0,42,0,0,84],[462.0,7.0,0,44,-1,0,87],[465.0,3.0,1,31,0,3,65],[468.0,0.5,1,31,0,2,65],[468.0,6.0,1,31,0,3,65],[468.5,0.5,1,33,-1,2,68],[469.0,0.5,1,34,-1,2,70],[469.0,1.0,0,41,-1,0,82],[469.0,1.0,0,43,-1,0,85],[469.5,0.5,1,36,-1,2,73],[470.0,0.5,1,38,0,2,77],[470.0,1.0,0,42,0,0,84],[470.0,1.0,0,44,-1,0,87],[470.5,0.5,1,40,-1,2,80],[471.0,1.5,0,41,-1,0,82],[471.0,1.5,0,43,-1,0,85],[471.0,7.0,0,41,-1,1,82],[472.5,3.0,0,43,-1,0,85],[472.5,3.0,0,45,0,0,89],[474.0,3.0,1,31,0,3,65],[475.5,2.5,0,41,-1,0,82],[475.5,2.5,0,43,-1,0,85],[477.0,0.5,1,30,-1,2,63],[477.0,6.0,1,30,-1,3,63],[477.5,0.5,1,32,-1,2,66],[478.0,0.5,1,33,-1,2,68],[478.0,1.0,0,40,-1,0,80],[478.0,1.0,0,42,0,0,84],[478.5,0.5,1,35,0,2,72],[479.0,0.5,1,37,-1,2,75],[479.0,1.0,0,41,-1,0,82],[479.0,1.0,0,43,-1,0,85],[479.5,0.5,1,39,-1,2,78],[480.0,6.0,0,40,-1,0,80],[480.0,6.0,0,42,0,0,84],[483.0,3.0,1,30,-1,3,63],[486.0,0.5,1,29,-1,2,61],[486.0,6.0,1,29,-1,3,61],[486.5,0.5,1,30,-1,2,63],[487.0,0.5,1,32,-1,2,66],[487.0,1.0,0,39,-1,0,78],[487.0,1.0,0,41,-1,0,82],[487.5,0.5,1,34,-1,2,70],[488.0,0.5,1,36,-1,2,73],[488.0,1.0,0,40,-1,0,80],[488.0,1.0,0,42,0,0,84],[488.5,0.5,1,37,-1,2,75],[489.0,1.0,0,41,-1,0,82],[489.0,3.0,0,39,-1,1,78],[490.0,1.0,0,44,-1,0,87],[491.0,1.0,0,41,-1,0,82],[492.0,1.0,0,40,-1,0,80],[492.0,3.0,1,28,0,3,60],[492.0,3.0,1,28,0,2,60],[492.0,3.0,1,30,-1,2,63],[492.0,3.0,1,31,0,2,65],[492.0,3.0,1,33,-1,2,68],[492.0,3.0,1,35,0,2,72],[492.0,4.0,0,38,0,1,77],[493.0,1.0,0,41,-1,0,82],[494.0,2.0,0,40,-1,0,80],[495.0,0.5,1,21,0,2,48],[495.0,6.0,1,21,0,3,48],[495.5,0.5,1,25,-1,2,54],[496.0,0.5,1,27,-1,2,58],[496.0,1.0,0,37,-1,0,75],[496.0,1.0,0,39,-1,0,78],[496.5,0.5,1,28,0,2,60],[497.0,0.5,1,30,-1,2,63],[497.0,1.0,0,38,0,0,77],[497.0,1.0,0,40,-1,0,80],[497.5,0.5,1,32,-1,2,66],[498.0,3.0,1,34,-1,2,70],[498.0,3.0,0,37,-1,0,75],[498.0,3.0,0,39,-1,0,78],[501.0,3.0,1,24,0,3,53],[501.0,3.0,1,28,0,2,60],[501.0,3.0,1,30,-1,2,63],[501.0,3.0,0,33,0,0,69],[501.0,4.0,0,38,0,0,77],[504.0,0.5,1,26,-1,2,56],[504.0,6.0,1,26,-1,3,56],[504.5,0.5,1,27,-1,2,58],[505.0,0.5,1,29,-1,2,61],[505.0,1.0,0,36,-1,0,73],[505.0,1.0,0,38,0,0,77],[505.5,0.5,1,31,0,2,65],[506.0,0.5,1,33,-1,2,68],[506.0,1.0,0,37,-1,0,75],[506.0,1.0,0,39,-1,0,78],[506.5,0.5,1,34,-1,2,70],[507.0,1.0,0,38,0,0,77],[507.0,3.0,0,36,-1,1,73],[508.0,1.0,0,41,-1,0,82],[509.0,1.0,0,38,0,0,77],[510.0,1.0,0,37,-1,0,75],[510.0,3.0,1,25,-1,3,54],[510.0,3.0,1,25,-1,2,54],[510.0,3.0,1,27,-1,2,58],[510.0,3.0,1,29,-1,2,61],[510.0,3.0,1,30,-1,2,63],[510.0,3.0,0,36,-1,1,73],[511.0,1.0,0,38,0,0,77],[512.0,2.0,0,37,-1,0,75],[513.0,0.5,1,24,0,2,53],[513.0,6.0,1,24,0,3,53],[513.5,0.5,1,26,-1,2,56],[514.0,0.5,1,27,-1,2,58],[514.0,1.0,0,34,-1,0,70],[514.0,1.0,0,36,-1,0,73],[514.5,0.5,1,29,-1,2,61],[515.0,0.5,1,31,0,2,65],[515.0,1.0,0,35,0,0,72],[515.0,1.0,0,37,-1,0,75],[515.5,0.5,1,33,-1,2,68],[516.0,3.0,0,34,-1,0,70],[516.0,3.0,0,36,-1,0,73],[519.0,1.5,1,23,-1,3,51],[519.0,3.0,1,25,-1,2,54],[519.0,3.0,1,28,0,2,60],[519.0,3.0,0,33,-1,0,68],[519.0,3.0,0,35,0,0,72],[520.5,1.5,1,19,-1,3,44],[522.0,1.0,1,15,-1,2,37],[522.0,1.0,1,19,-1,2,44],[523.0,1.0,0,24,0,2,53],[523.0,1.0,0,26,-1,2,56],[523.0,2.0,0,24,0,0,53],[523.0,2.0,0,26,-1,0,56],[524.0,7.0,1,31,0,2,65],[524.0,7.0,1,33,-1,2,68],[525.0,3.0,0,38,0,0,77],[525.0,3.0,0,40,-1,0,80],[525.0,6.0,1,28,-1,3,59],[528.0,4.0,0,36,-1,0,73],[528.0,4.0,0,38,0,0,77],[531.0,6.0,1,18,-1,3,42],[531.0,6.0,1,22,-1,3,49],[532.0,1.0,0,37,-1,0,75],[532.0,8.0,1,22,-1,2,49],[532.0,8.0,1,25,-1,2,54],[532.0,8.0,1,27,-1,2,58],[532.0,8.0,1,29,-1,2,61],[532.0,8.0,0,32,-1,1,66],[532.0,8.0,0,34,-1,1,70],[533.0,1.0,0,38,0,0,77],[534.0,7.0,0,37,-1,0,75],[540.0,6.0,1,19,-1,3,44],[541.0,1.0,0,29,-1,0,61],[541.0,1.0,0,36,-1,0,73],[541.0,2.0,1,24,0,2,53],[541.0,2.0,1,26,-1,2,56],[541.0,2.0,0,33,-1,1,68],[542.0,1.0,0,30,-1,0,63],[542.0,1.0,0,37,-1,0,75],[543.0,3.0,1,29,-1,2,61],[543.0,3.0,1,31,0,2,65],[543.0,3.0,0,33,-1,0,68],[543.0,3.0,0,38,0,0,77],[543.0,3.0,0,40,-1,0,80],[543.0,6.0,1,28,-1,3,59],[546.0,3.0,1,29,-1,2,61],[546.0,3.0,0,31,0,0,65],[546.0,3.0,0,36,-1,0,73],[546.0,4.0,0,38,0,0,77],[549.0,6.0,1,20,-1,3,46],[550.0,1.0,0,37,-1,0,75],[550.0,5.0,1,30,-1,2,63],[550.0,8.0,1,24,0,3,53],[550.0,8.0,1,27,-1,3,58],[550.0,8.0,0,31,0,1,65],[550.0,8.0,0,34,-1,1,70],[551.0,1.0,0,38,0,0,77],[552.0,3.0,0,37,-1,0,75],[555.0,3.0,1,29,-1,2,61],[555.0,3.0,0,36,-1,0,73],[558.0,9.0,1,17,0,3,41],[559.0,1.0,0,29,-1,0,61],[559.0,2.0,0,26,-1,1,56],[560.0,1.0,0,30,-1,0,63],[561.0,3.0,0,29,-1,1,61],[561.0,3.0,0,31,0,0,65],[561.0,3.0,0,34,-1,0,70],[564.0,3.0,0,26,-1,0,56],[564.0,3.0,0,29,-1,0,61],[564.0,3.0,0,31,0,0,65],[567.0,3.0,1,16,-1,3,39],[568.0,1.0,0,32,-1,0,66],[568.0,2.0,0,27,-1,1,58],[568.0,2.0,0,29,-1,1,61],[569.0,1.0,0,33,-1,0,68],[570.0,3.0,1,23,-1,3,51],[570.0,3.0,0,32,-1,1,66],[570.0,3.0,0,34,-1,0,70],[570.0,3.0,0,36,-1,0,73],[573.0,3.0,0,29,-1,0,61],[573.0,3.0,1,30,-1,3,63],[573.0,3.0,0,32,-1,0,66],[573.0,3.0,0,34,-1,0,70],[576.0,1.5,1,19,-1,2,44],[576.0,6.0,1,19,-1,3,44],[577.0,1.0,0,34,-1,0,70],[577.0,2.0,0,28,0,1,60],[577.0,2.0,0,32,-1,1,66],[577.5,1.5,1,23,-1,2,51],[578.0,1.0,0,35,0,0,72],[579.0,3.0,0,33,-1,1,68],[579.0,3.0,0,35,0,0,72],[579.0,3.0,0,38,0,0,77],[579.0,3.0,1,40,-1,2,80],[582.0,3.0,1,26,-1,2,56],[582.0,3.0,0,28,0,0,60],[582.0,3.0,0,32,-1,0,66],[582.0,3.0,0,33,-1,0,68],[585.0,0.5,1,15,-1,2,37],[585.0,3.0,1,15,-1,3,37],[585.5,0.5,1,19,-1,2,44],[586.0,0.5,1,22,-1,2,49],[586.5,0.5,1,24,0,2,53],[587.0,0.5,0,26,-1,2,56],[587.5,0.5,0,29,-1,2,61],[588.0,0.5,1,17,0,2,41],[588.0,3.0,1,17,0,3,41],[588.5,0.5,1,21,0,2,48],[589.0,0.5,1,24,0,2,53],[589.5,0.5,0,26,-1,2,56],[590.0,0.5,0,28,0,2,60],[590.5,0.5,0,31,0,2,65],[591.0,0.5,1,15,-1,2,37],[591.0,3.0,1,15,-1,3,37],[591.5,0.5,1,19,-1,2,44],[592.0,0.5,1,22,-1,2,49],[592.5,0.5,1,24,0,2,53],[593.0,0.5,0,26,-1,2,56],[593.5,0.5,0,29,-1,2,61],[594.0,0.5,1,17,0,2,41],[594.0,3.0,1,17,0,3,41],[594.5,0.5,1,21,0,2,48],[595.0,0.5,1,24,0,2,53],[595.5,0.5,0,26,-1,2,56],[596.0,0.5,0,28,0,2,60],[596.5,0.5,0,31,0,2,65],[597.0,0.5,1,19,-1,2,44],[597.0,3.0,0,33,-1,1,68],[597.0,3.0,0,35,-1,0,71],[597.0,6.0,1,19,-1,3,44],[597.5,0.5,1,24,-1,2,52],[598.0,0.5,1,26,-1,2,56],[598.5,0.5,1,28,-1,2,59],[599.0,0.5,1,31,-1,2,64],[599.5,0.5,1,32,-1,2,66],[600.0,3.0,0,31,-1,1,64],[600.0,3.0,1,33,-1,2,68],[600.0,3.0,0,36,-1,0,73],[603.0,0.5,1,22,-1,2,49],[603.0,3.0,1,22,-1,3,49],[603.5,0.5,1,26,-1,2,56],[604.0,0.5,1,29,-1,2,61],[604.5,0.5,1,31,0,2,65],[605.0,0.5,0,33,-1,2,68],[605.5,0.5,0,36,-1,2,73],[606.0,0.5,1,24,0,2,53],[606.0,3.0,1,24,0,3,53],[606.5,0.5,1,28,0,2,60],[607.0,0.5,1,31,0,2,65],[607.5,0.5,0,33,-1,2,68],[608.0,0.5,0,35,0,2,72],[608.5,0.5,0,38,0,2,77],[609.0,0.5,1,22,-1,2,49],[609.0,3.0,1,22,-1,3,49],[609.5,0.5,1,26,-1,2,56],[610.0,0.5,1,29,-1,2,61],[610.5,0.5,1,31,0,2,65],[611.0,0.5,0,33,-1,2,68],[611.5,0.5,0,36,-1,2,73],[612.0,0.5,1,24,0,2,53],[612.0,3.0,1,24,0,3,53],[612.5,0.5,1,28,0,2,60],[613.0,0.5,1,31,0,2,65],[613.5,0.5,0,33,-1,2,68],[614.0,0.5,0,35,0,2,72],[614.5,0.5,0,38,0,2,77],[615.0,0.5,1,26,-1,2,56],[615.0,3.0,0,42,-1,0,83],[615.0,6.0,1,26,-1,3,56],[615.0,6.0,0,40,-1,1,80],[615.5,0.5,1,28,-1,2,59],[616.0,0.5,1,31,-1,2,64],[616.5,0.5,1,33,-1,2,68],[617.0,0.5,1,35,-1,2,71],[617.5,3.5,1,38,-1,2,76],[618.0,3.0,0,43,-1,0,85],[621.0,0.5,1,26,-1,2,56],[621.0,3.0,0,42,-1,0,83],[621.0,6.0,1,26,-1,3,56],[621.0,6.0,0,40,-1,1,80],[621.5,0.5,1,28,-1,2,59],[622.0,0.5,1,31,-1,2,64],[622.5,0.5,1,33,-1,2,68],[623.0,0.5,1,35,-1,2,71],[623.5,3.5,1,38,-1,2,76],[624.0,3.0,0,43,-1,0,85],[627.0,3.0,1,19,-1,2,44],[627.0,3.0,0,45,-1,0,88],[630.0,0.5,1,15,-1,2,37],[630.0,6.0,1,15,-1,3,37],[630.0,9.0,0,45,0,1,89],[630.0,9.0,0,47,-1,1,92],[630.5,0.5,1,19,-1,2,44],[631.0,0.5,1,22,-1,2,49],[631.5,0.5,1,24,0,2,53],[632.0,0.5,1,26,-1,2,56],[632.5,0.5,1,29,-1,2,61],[633.0,1.0,1,31,0,2,65],[634.0,1.0,1,33,-1,2,68],[635.0,1.0,1,36,-1,2,73],[636.0,1.0,1,38,0,2,77],[637.0,1.0,1,40,-1,2,80],[638.0,1.0,1,43,-1,2,85],[639.0,6.0,1,29,-1,2,61],[639.0,6.0,1,33,-1,2,68],[639.0,6.0,1,36,-1,2,73],[639.0,6.0,1,38,0,2,77],[639.0,6.0,0,40,-1,1,80],[639.0,6.0,0,43,-1,1,85],[639.0,6.0,0,45,0,1,89],[639.0,6.0,0,47,-1,1,92]],"clefs":[[45.0,1,"F"],[45.0,1,"F"],[74.0,1,"G"],[81.0,1,"F"],[81.0,1,"F"],[81.0,1,"G"],[127.5,1,"G"],[144.0,1,"F"],[145.5,1,"G"],[162.0,1,"F"],[208.0,1,"G"],[234.0,1,"F"],[234.0,1,"F"],[297.0,1,"G"],[306.0,1,"F"],[324.0,1,"G"],[369.0,1,"F"],[414.0,1,"G"],[495.0,1,"F"],[504.0,1,"G"],[519.0,1,"F"],[524.0,1,"G"],[531.0,1,"F"],[579.0,1,"G"],[582.0,1,"F"],[615.0,1,"G"],[627.0,1,"F"],[633.0,1,"G"]],"otts":[[216.0,0,1],[231.0,0,0],[324.0,0,1],[351.0,0,0],[360.0,0,1],[369.0,0,0],[432.0,0,1],[450.0,0,0],[453.0,0,1],[486.0,0,0],[522.0,0,0],[615.0,0,1]],"keys":[[0,-5],[324,4],[378,-5]]};
+const PICK = D.pickup, CAD = D.cadenza, NB = D.bars.length;
+
+/* ---------- music helpers ---------- */
+const CH = {"D♭": ["D♭", "F", "A♭"], "C°7": ["C", "E♭", "G♭", "A"], "A♭7": ["A♭", "C", "E♭", "G♭"], "E♭m7": ["E♭", "G♭", "B♭", "D♭"], "F7": ["F", "A", "C", "E♭"], "B♭m7": ["B♭", "D♭", "F", "A♭"], "G♭": ["G♭", "B♭", "D♭"], "D♭7": ["D♭", "F", "A♭", "C♭"], "B♭m": ["B♭", "D♭", "F"], "E♭m": ["E♭", "G♭", "B♭"], "A°7": ["A", "C", "E♭", "G♭"], "Cm7♭5": ["C", "E♭", "G♭", "B♭"], "B♭m7♭5": ["B♭", "D♭", "F♭", "A♭"], "A♭7sus": ["A♭", "D♭", "E♭", "G♭"], "Fm": ["F", "A♭", "C"], "Fm7": ["F", "A♭", "C", "E♭"], "D♭m": ["D♭", "F♭", "A♭"], "D♭m7": ["D♭", "F♭", "A♭", "C♭"], "E♭7": ["E♭", "G", "B♭", "D♭"], "B♭+": ["B♭", "D", "G♭"], "A♭+": ["A♭", "C", "E"], "C♯m7": ["C♯", "E", "G♯", "B"], "C♯m": ["C♯", "E", "G♯"], "Amaj7": ["A", "C♯", "E", "G♯"], "A": ["A", "C♯", "E"], "F♯m": ["F♯", "A", "C♯"], "F♯m7": ["F♯", "A", "C♯", "E"], "D♯m7♭5": ["D♯", "F♯", "A", "C♯"], "B7": ["B", "D♯", "F♯", "A"], "E♭m7♭5": ["E♭", "G♭", "A", "D♭"]};
+const tonesOf = sym => CH[sym.split("/")[0]];
+const LET = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const pcOf = n => (LET[n[0]] + (n.includes('♭') ? -1 : 0) + (n.includes('♯') ? 1 : 0) + 12) % 12;
+const FLATS = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+const SECTIONS = [{"id": "A", "from": 1, "to": 8, "what": "The theme, in soft thirds. Under it the bass walks down one step per bar: G♭, F, E♭, D♭, B♭, A♭, F."}, {"id": "A′", "from": 9, "to": 14, "what": "The theme again over deep bass notes. D♭ and G♭ take turns, then D♭7 leans toward B♭ minor."}, {"id": "B", "from": 15, "to": 26, "what": "Tempo rubato. Full chords over E♭, then the bass climbs step by step (A♭, A, B♭, C, D♭, E♭) to the high point in bar 25."}, {"id": "C", "from": 27, "to": 36, "what": "Un poco mosso, the flowing arpeggios. Each bar goes D♭, F minor, D♭ minor: that last minor chord is the moonlight colour."}, {"id": "D", "from": 37, "to": 42, "what": "En animant, the climax. The key signature changes to four sharps; the numerals here count from E major."}, {"id": "E", "from": 43, "to": 50, "what": "Calming down over a held A♭, then E♭m7, finding the way home."}, {"id": "A″", "from": 51, "to": 58, "what": "The theme returns, higher and quieter, with F7 in bar 52 as a new colour."}, {"id": "A‴", "from": 59, "to": 65, "what": "Like bars 9–14, ending on A♭7, ready to close."}, {"id": "Coda", "from": 66, "to": 72, "what": "D♭ and F minor rock back and forth, a last touch of D♭ minor, then D♭ to finish."}];
+const secOf = n => SECTIONS.find(s => n >= s.from && n <= s.to);
+
+function voicing(sym) {
+  const [base, slash] = sym.split('/');
+  const tones = CH[base].map(pcOf), root = tones[0];
+  const bass = 36 + (slash ? pcOf(slash) : root);   // C2–B2
+  const upper = [48 + root];                         // root position from C3–B3
+  for (let i = 1; i < tones.length; i++) {
+    let m = upper[upper.length - 1] + 1;
+    while (m % 12 !== tones[i]) m++;
+    upper.push(m);
+  }
+  return { bass, upper };
+}
+
+/* flat list of chords with absolute times */
+const CHORDS = [];
+D.bars.forEach(b => b.chords.forEach(([s, r, off, d], i) => CHORDS.push({ s, r, t: b.start + off, d, bar: b.n, i })));
+const barAt = p => { let b = D.bars[0]; for (const x of D.bars) if (x.start <= p + 1e-6) b = x; return b; };
+function chordIndexAt(p) { let k = 0; for (let i = 0; i < CHORDS.length; i++) if (CHORDS[i].t <= p + 1e-6) k = i; return k; }
+
+/* ---------- audio ---------- */
+let ac = null, master, buses = {}, voices = new Set();
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+  master = ac.createGain(); master.gain.value = 0.9;
+  const rev = ac.createConvolver(); rev.buffer = impulse(2.6);
+  const wet = ac.createGain(); wet.gain.value = 0.28;
+  master.connect(comp); master.connect(rev); rev.connect(wet); wet.connect(comp); comp.connect(ac.destination);
+  for (const k of ['mel', 'acc', 'ui']) { buses[k] = ac.createGain(); buses[k].connect(master); }
+  applyMutes();
+  const amps = [1, .62, .32, .2, .12, .07, .045, .03];
+  waves.bright = ac.createPeriodicWave(new Float32Array([0, ...amps]), new Float32Array(amps.length + 1));
+  waves.soft = ac.createPeriodicWave(new Float32Array([0, 1, .35, .12, .05]), new Float32Array(5));
+  waves.warm = ac.createPeriodicWave(new Float32Array([0, 1, .42, .16, .07, .03, .015]), new Float32Array(7));
+  waves.felt = ac.createPeriodicWave(new Float32Array([0, 1, .22, .05, .015]), new Float32Array(5));
+  waves.sine = ac.createPeriodicWave(new Float32Array([0, 1, .06]), new Float32Array(3));
+}
+/* Sound presets. "piano" is used for the chords; the melody uses whichever the viewer picks. */
+const TONES = {
+  bright: { w1: m => m < 84 ? 'bright' : 'soft', w2: 'soft', mix: .35, det: 4, atk: .006, cut0: f => Math.min(f * 9 + 1800, 14000), cut1: f => Math.max(f * 2.2, 500), sus: 1, vel: 1 },
+  warm:   { w1: () => 'warm', w2: 'felt', mix: .5, det: 6, atk: .012, cut0: f => Math.min(f * 4 + 700, 5000), cut1: f => Math.max(f * 1.6, 450), sus: 1.25, vel: .9 },
+  felt:   { w1: () => 'felt', w2: 'sine', mix: .6, det: -7, atk: .025, cut0: f => Math.min(f * 2.5 + 300, 2800), cut1: f => Math.max(f * 1.3, 380), sus: 1.4, vel: 1 },
+};
+TONES.piano = TONES.bright;
+let melTone = 'warm';
+const waves = {};
+function impulse(sec) {
+  const len = ac.sampleRate * sec, buf = ac.createBuffer(2, len, ac.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+  return buf;
+}
+function playNote(m, when, dur, vel, bus) {
+  const f = 440 * Math.pow(2, (m - 69) / 12);
+  const g = ac.createGain(), lp = ac.createBiquadFilter();
+  const P = TONES[bus === 'mel' ? melTone : 'piano'];
+  lp.type = 'lowpass'; lp.Q.value = 0.3;
+  const o1 = ac.createOscillator(), o2 = ac.createOscillator();
+  o1.setPeriodicWave(waves[P.w1(m)]); o2.setPeriodicWave(waves[P.w2]);
+  o1.frequency.value = f; o2.frequency.value = f; o2.detune.value = P.det;
+  const o2g = ac.createGain(); o2g.gain.value = P.mix;
+  o1.connect(lp); o2.connect(o2g); o2g.connect(lp); lp.connect(g); g.connect(buses[bus]);
+  const tau = Math.max(0.5, Math.min(3.2, 3.6 - (m - 30) * 0.045)) * P.sus;
+  const v = vel * P.vel * (m < 48 ? 1.15 : 1);
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(v, when + P.atk);
+  g.gain.setTargetAtTime(v * 0.0001, when + P.atk, tau);
+  lp.frequency.setValueAtTime(P.cut0(f), when);
+  lp.frequency.setTargetAtTime(P.cut1(f), when + 0.01, tau * 0.5);
+  const end = when + Math.max(dur, 0.08);
+  g.gain.setTargetAtTime(0, end, 0.09);
+  o1.start(when); o2.start(when); o1.stop(end + 0.7); o2.stop(end + 0.7);
+  const vo = { g, o1, o2 }; voices.add(vo);
+  o1.onended = () => voices.delete(vo);
+}
+function silence() {
+  if (!ac) return;
+  const now = ac.currentTime;
+  for (const v of voices) { try { v.g.gain.cancelScheduledValues(now); v.g.gain.setTargetAtTime(0, now, 0.03); v.o1.stop(now + 0.2); v.o2.stop(now + 0.2); } catch (e) {} }
+  voices.clear();
+}
+
+/* ---------- events ---------- */
+const $ = id => document.getElementById(id);
+let accEvents = [], melEvents = [], events = [];
+function buildEvents() {
+  melEvents = [];
+  for (const [t, d, ms] of D.rh) {
+    const top = Math.max(...ms);
+    for (const m of ms) melEvents.push({ t, d, m, vel: m === top ? 0.26 : 0.15, bus: 'mel', sd: d * 1.05 });
+  }
+  const style = $('style').value;
+  accEvents = [];
+  const pushOrig = (from, to) => {
+    for (const [t, d, ms] of D.lh) {
+      if (t < from - 1e-6 || t >= to - 1e-6) continue;
+      const b = barAt(t), rel = t - b.start;
+      let sus = b.n === CAD ? Math.max(d, 14 - rel) : Math.max(d, Math.ceil((rel + 0.01) / 3) * 3 - rel);
+      ms.forEach((m, i) => accEvents.push({ t, d, m, vel: ms.length === 1 ? 0.2 : 0.11, bus: 'acc', sd: sus, bass: ms.length === 1 }));
+    }
+  };
+  if (style === 'orig') pushOrig(0, D.end);
+  else for (const c of CHORDS) {
+    const { bass, upper } = voicing(c.s);
+    const b = D.bars[c.bar - 1];
+    if (style === 'pattern' && b.n === CAD) { pushOrig(b.start, b.start + b.len); continue; }
+    if (style === 'block' || c.d < 3 || b.n >= 33 && style === 'pattern' && false) {
+      accEvents.push({ t: c.t, d: c.d, m: bass, vel: 0.2, bus: 'acc', sd: c.d, bass: true });
+      upper.forEach(m => accEvents.push({ t: c.t, d: c.d, m, vel: 0.11, bus: 'acc', sd: c.d }));
+    } else {
+      for (let e = c.t; e < c.t + c.d - 1e-6; e += 1) {
+        const k = Math.round(e - b.start) % 3, rest = c.t + c.d - e;
+        if (k === 0) accEvents.push({ t: e, d: 1, m: bass, vel: 0.2, bus: 'acc', sd: Math.min(rest, 3), bass: true });
+        else upper.forEach(m => accEvents.push({ t: e, d: 1, m, vel: 0.095, bus: 'acc', sd: Math.min(rest, 2) }));
+      }
+    }
+  }
+  events = melEvents.concat(accEvents).sort((a, b) => a.t - b.t);
+}
+
+/* ---------- transport ---------- */
+let playing = false, pos = 0, anchorCtx = 0, anchorPos = 0, schedPos = 0, evIdx = 0, timer = null;
+const spe = () => 60 / +$('tempo').value;     // seconds per eighth note
+function curPos() { return playing ? anchorPos + (ac.currentTime - anchorCtx) / spe() : pos; }
+function loopRange() {
+  const mode = $('loopMode').value;
+  if (mode === 'off') return null;
+  const b = barAt(Math.max(pos, PICK));
+  if (mode === 'bar') return [b.start, b.start + b.len];
+  if (mode === 'section') { const s = secOf(b.n); return [D.bars[s.from - 1].start, D.bars[s.to - 1].start + D.bars[s.to - 1].len]; }
+  let f = Math.min(NB, Math.max(1, +$('loopFrom').value || 1)), t = Math.min(NB, Math.max(f, +$('loopTo').value || f));
+  return [D.bars[f - 1].start, D.bars[t - 1].start + D.bars[t - 1].len];
+}
+let loop = null;
+function seekIdx(p) { evIdx = 0; while (evIdx < events.length && events[evIdx].t < p - 1e-6) evIdx++; }
+function anchor(p) { anchorCtx = ac.currentTime + 0.05; anchorPos = p; schedPos = p; seekIdx(p); }
+function tick() {
+  const horizon = anchorPos + (ac.currentTime + 0.15 - anchorCtx) / spe();
+  let guard = 0;
+  while (schedPos < horizon && guard++ < 4) {
+    const stop = loop ? Math.min(horizon, loop[1]) : Math.min(horizon, D.end);
+    while (evIdx < events.length && events[evIdx].t < stop - 1e-6) {
+      const e = events[evIdx++];
+      if (e.t >= schedPos - 1e-6) playNote(e.m, anchorCtx + (e.t - anchorPos) * spe(), e.sd * spe(), e.vel, e.bus);
+    }
+    schedPos = stop;
+    if (loop && horizon >= loop[1]) {
+      anchorCtx = anchorCtx + (loop[1] - anchorPos) * spe(); anchorPos = loop[0]; schedPos = loop[0]; seekIdx(loop[0]);
+    } else if (!loop && schedPos >= D.end) {
+      if (ac.currentTime > anchorCtx + (D.end - anchorPos) * spe() + 1.5) { pause(); setPos(0); }
+      break;
+    }
+  }
+}
+function play() {
+  initAudio(); ac.resume();
+  if (pos >= D.end - 0.01) pos = 0;
+  loop = loopRange();
+  if (loop && (pos < loop[0] || pos >= loop[1])) pos = loop[0];
+  playing = true; anchor(pos);
+  timer = setInterval(tick, 25); tick();
+  $('playBtn').textContent = '❚❚ Pause';
+}
+function pause() {
+  if (!playing) return;
+  pos = Math.min(curPos(), D.end); playing = false; clearInterval(timer); silence();
+  $('playBtn').textContent = '▶ Play';
+}
+function setPos(p) {
+  p = Math.max(0, Math.min(p, D.end));
+  if (playing) { silence(); pos = p; loop = loopRange(); if (loop && (p < loop[0] || p >= loop[1])) loop = null, $('loopMode').value = 'off', syncRange(); anchor(p); }
+  else pos = p;
+  lastChord = -1;
+}
+function restartLoop() { if (playing) { const p = curPos(); silence(); pos = p; loop = loopRange(); if (loop && (p < loop[0] || p >= loop[1])) pos = loop[0]; anchor(pos); } }
+function auditionChord(sym) {
+  initAudio(); ac.resume();
+  const { bass, upper } = voicing(sym), t = ac.currentTime + 0.02;
+  playNote(bass, t, 1.6, 0.22, 'ui'); upper.forEach((m, i) => playNote(m, t + 0.03 * (i + 1), 1.6, 0.13, 'ui'));
+  flash = { notes: [bass, ...upper], until: performance.now() + 1200 };
+}
+$('melTone').onchange = () => {
+  melTone = $('melTone').value;
+  if (playing) { const p = curPos(); silence(); anchor(p); }
+  else { initAudio(); ac.resume(); [79, 77, 79, 75].forEach((m, i) => playNote(m, ac.currentTime + 0.05 + i * 0.32, 0.4, 0.26, 'mel')); }
+};
+$('melVol').oninput = applyMutes;
+function applyMutes() { if (!ac) return; buses.mel.gain.value = $('melOn').checked ? $('melVol').value / 100 : 0; buses.acc.gain.value = $('accOn').checked ? 1 : 0; }
+
+/* ---------- controls ---------- */
+$('playBtn').onclick = () => playing ? pause() : play();
+$('restartBtn').onclick = () => { setPos(0); if (!playing) play(); };
+$('prevBar').onclick = () => stepBar(-1);
+$('nextBar').onclick = () => stepBar(1);
+function stepBar(dir) {
+  const p = curPos(), b = barAt(Math.max(p, PICK));
+  let n = b.n + dir;
+  if (dir < 0 && p - b.start > 2) n = b.n;
+  n = Math.max(1, Math.min(NB, n));
+  setPos(D.bars[n - 1].start - (n === 1 ? PICK : 0));
+}
+$('tempo').oninput = () => { $('tempoVal').textContent = $('tempo').value; if (playing) { const p = curPos(); silence(); anchor(p); } };
+$('melOn').onchange = applyMutes; $('accOn').onchange = applyMutes;
+$('style').onchange = () => { buildEvents(); if (playing) { const p = curPos(); silence(); anchor(p); } };
+function syncRange() { $('rangeBox').hidden = $('loopMode').value !== 'range'; }
+$('loopMode').onchange = () => {
+  syncRange();
+  if ($('loopMode').value === 'range') { const b = barAt(Math.max(curPos(), PICK)); $('loopFrom').value = b.n; $('loopTo').value = Math.min(NB, b.n + 3); }
+  restartLoop();
+};
+$('loopFrom').onchange = restartLoop; $('loopTo').onchange = restartLoop;
+document.addEventListener('keydown', e => {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) && e.target.type !== 'checkbox' && e.target.type !== 'range') return;
+  if (e.code === 'Space') { e.preventDefault(); playing ? pause() : play(); }
+  else if (e.code === 'ArrowRight' && e.target.type !== 'range') { e.preventDefault(); stepBar(1); }
+  else if (e.code === 'ArrowLeft' && e.target.type !== 'range') { e.preventDefault(); stepBar(-1); }
+});
+
+/* ---------- chord map ---------- */
+const mapEl = $('map'), chipEls = [], barEls = [];
+for (const s of SECTIONS) {
+  const sec = document.createElement('div'); sec.className = 'section';
+  sec.innerHTML = `<div class="section-head"><h3>${s.id}</h3><span class="what">Bars ${s.from}–${s.to}. ${s.what}</span><button class="btn loopit" type="button">Repeat ${s.id}</button></div><div class="bars"></div>`;
+  sec.querySelector('.loopit').onclick = () => {
+    $('loopMode').value = 'range'; syncRange(); $('loopFrom').value = s.from; $('loopTo').value = s.to;
+    setPos(D.bars[s.from - 1].start); if (!playing) play(); else restartLoop();
+  };
+  const grid = sec.querySelector('.bars');
+  for (let n = s.from; n <= s.to; n++) {
+    const b = D.bars[n - 1];
+    const el = document.createElement('div'); el.className = 'bar' + (n === CAD ? ' wide' : '');
+    el.innerHTML = `<div class="bar-n"><span>Bar ${n}${n === CAD ? ' · cadenza, free time' : ''}</span><button type="button">play</button></div><div class="chips"></div>` +
+      (n === CAD ? '' : '<div class="beats"><span>1</span><span>2</span><span>3</span></div>');
+    el.querySelector('button').onclick = () => { setPos(b.start - (n === 1 ? PICK : 0)); if (!playing) play(); };
+    const chips = el.querySelector('.chips');
+    b.chords.forEach(([sym, rom, off, d]) => {
+      const c = document.createElement('button'); c.type = 'button';
+      c.className = 'chip' + (d < 3 ? ' tiny' : '');
+      c.style.flex = `${d} 1 0`;
+      c.title = `${sym} = ${tonesOf(sym).join(' – ')}  (${rom})`;
+      c.innerHTML = `<span class="s">${sym.replace('/', '/<wbr>')}</span><span class="ro">${rom}</span>`;
+      c.onclick = () => { setPos(b.start + off); if (!playing) auditionChord(sym); };
+      if (d < 3) {
+        const beat = Math.floor(off / 3 + 1e-6);
+        let st = chips.querySelector(`.stack[data-b="${beat}"]`);
+        if (!st) { st = document.createElement('div'); st.className = 'stack'; st.dataset.b = beat; st.style.flex = '3 1 0'; chips.appendChild(st); }
+        st.appendChild(c);
+      } else chips.appendChild(c);
+      chipEls.push(c);
+    });
+    grid.appendChild(el); barEls.push(el);
+  }
+  mapEl.appendChild(sec);
+}
+
+/* ---------- now panel ---------- */
+const meter = $('meter');
+for (let b = 0; b < 3; b++) { const g = document.createElement('span'); g.className = 'beat'; for (let k = 0; k < 3; k++) { const i = document.createElement('i'); if (!k) i.className = 'big'; g.appendChild(i); } meter.appendChild(g); }
+const dots = [...meter.querySelectorAll('i')];
+let lastChord = -1, lastBar = -1, lastEighth = -1, curNames = {};
+const stripBars = $('stripBars'); let stripSec = null, stripChips = {}, stripBarEls = {};
+function renderStrip(s, w) {
+  stripSec = w; stripChips = {}; stripBarEls = {}; stripBars.innerHTML = '';
+  const nx = SECTIONS[SECTIONS.indexOf(s) + 1];
+  $('stripTitle').innerHTML = `<b>${s.id}</b> · bars ${s.from}–${s.to}`;
+  $('stripNext').textContent = w + 4 <= s.to ? `then bars ${w + 4}–${Math.min(s.to, w + 7)}` : nx ? `then ${nx.id} (bars ${nx.from}–${nx.to})` : 'then the end';
+  for (let n = w; n <= Math.min(s.to, w + 3); n++) {
+    const b = D.bars[n - 1], el = document.createElement('div'); el.className = 'bar';
+    el.innerHTML = `<div class="bar-n"><span>Bar ${n}${n === CAD ? ' · cadenza, free time' : ''}</span></div><div class="chips"></div>`;
+    const chips = el.querySelector('.chips');
+    let ci = CHORDS.findIndex(c => c.bar === n);
+    b.chords.forEach(([sym, rom, off, d]) => {
+      const c = document.createElement('button'); c.type = 'button';
+      c.className = 'chip' + (d < 3 ? ' tiny' : '');
+      c.style.flex = `${d} 1 0`;
+      c.title = `${sym} = ${tonesOf(sym).join(' – ')}  (${rom})`;
+      c.innerHTML = `<span class="s">${sym.replace('/', '/<wbr>')}</span><span class="ro">${rom}</span>`;
+      c.onclick = () => { setPos(b.start + off); if (!playing) auditionChord(sym); };
+      if (d < 3) {
+        const beat = Math.floor(off / 3 + 1e-6);
+        let st = chips.querySelector(`.stack[data-b="${beat}"]`);
+        if (!st) { st = document.createElement('div'); st.className = 'stack'; st.dataset.b = beat; st.style.flex = '3 1 0'; chips.appendChild(st); }
+        st.appendChild(c);
+      } else chips.appendChild(c);
+      stripChips[ci++] = c;
+    });
+    stripBars.appendChild(el); stripBarEls[n] = el;
+  }
+}
+function updatePanel(p) {
+  const bn0 = barAt(Math.max(p, PICK)).n, s0 = secOf(bn0), w0 = s0.from + 4 * Math.floor((bn0 - s0.from) / 4);
+  if (w0 !== stripSec) { renderStrip(s0, w0); lastChord = -1; lastBar = -1; }
+  const ci = p < PICK ? 0 : chordIndexAt(p), c = CHORDS[ci];
+  if (ci !== lastChord) {
+    lastChord = ci;
+    $('nowSym').textContent = c.s; $('nowRom').textContent = c.r;
+    const names = tonesOf(c.s); curNames = {};
+    names.forEach(n => curNames[pcOf(n)] = n);
+    $('nowTones').innerHTML = names.map((n, i) => `<span class="tone${i ? '' : ' root'}">${n}</span>`).join('') + (c.s.includes('/') ? `<span class="tone bassnote">bass ${c.s.split('/')[1]}</span>` : '');
+    const nx = CHORDS[ci + 1];
+    $('nextChord').innerHTML = nx ? `Next: <b>${nx.s}</b> &nbsp;in bar ${nx.bar}` : 'Last chord: let it ring';
+    chipEls.forEach((el, i) => el.classList.toggle('cur', i === ci));
+    for (const k in stripChips) stripChips[k].classList.toggle('cur', +k === ci);
+  }
+  const b = barAt(Math.max(p, PICK));
+  if (b.n !== lastBar) {
+    lastBar = b.n; barEls.forEach((el, i) => el.classList.toggle('cur', i === b.n - 1));
+    for (const k in stripBarEls) stripBarEls[k].classList.toggle('cur', +k === b.n);
+    if (stripBarEls[b.n]) stripBars.scrollLeft = stripBarEls[b.n].offsetLeft - 8;
+    const s = secOf(b.n); $('secTag').innerHTML = `<b>${s.id}</b> · bars ${s.from}–${s.to}`;
+  }
+  const e = p < PICK ? -1 : Math.floor(p - b.start + 1e-6);
+  const key = b.n * 100 + e;
+  if (key !== lastEighth) {
+    lastEighth = key;
+    const sub = ['', '-and', '-a'];
+    if (p < PICK) $('posText').innerHTML = 'Pickup note';
+    else if (b.n === CAD) $('posText').innerHTML = `<b>Bar 32</b> · cadenza`;
+    else $('posText').innerHTML = `<b>Bar ${b.n}</b> · beat ${Math.floor(e / 3) + 1}${sub[e % 3]}`;
+    dots.forEach((d, i) => d.classList.toggle('on', b.n !== CAD && p >= 1 && i === e));
+  }
+}
+
+/* ---------- drawing ---------- */
+const LO = 24, HI = 100, roll = $('roll'), keys = $('keys');
+const isBlack = m => [1, 3, 6, 8, 10].includes(m % 12);
+let geo = null, col = {}, flash = null;
+function readColors() { const cs = getComputedStyle(document.documentElement); for (const k of ['melody','melody-soft','chord','chord-soft','bass','key-white','key-black','roll-bg','grid','line','ink','muted','surface']) col[k] = cs.getPropertyValue('--' + k).trim(); }
+function layout() {
+  const dpr = window.devicePixelRatio || 1;
+  for (const c of [roll, keys, sheetC]) { const r = c.getBoundingClientRect(); c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0); }
+  const W = roll.getBoundingClientRect().width, whites = [];
+  for (let m = LO; m <= HI; m++) if (!isBlack(m)) whites.push(m);
+  const ww = W / whites.length, x = {};
+  whites.forEach((m, i) => x[m] = { x: i * ww, w: ww, black: false });
+  for (let m = LO; m <= HI; m++) if (isBlack(m)) x[m] = { x: x[m - 1].x + ww - ww * 0.31, w: ww * 0.62, black: true };
+  geo = { W, ww, x, RH: roll.getBoundingClientRect().height, KH: keys.getBoundingClientRect().height };
+}
+function rr(ctx, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+const LOOK = 12;   // eighth notes visible above the keys
+function draw() {
+  const p = curPos();
+  if (playing) pos = Math.min(p, D.end);
+  updatePanel(p);
+  const { W, x, RH, KH } = geo, ctx = roll.getContext('2d'), k = keys.getContext('2d');
+  const ppe = RH / LOOK;
+  ctx.fillStyle = col['roll-bg']; ctx.fillRect(0, 0, W, RH);
+  // octave guides + bar lines
+  ctx.fillStyle = col.grid;
+  for (let m = LO; m <= HI; m++) if (m % 12 === 0) ctx.fillRect(x[m].x, 0, 1, RH);
+  for (const b of D.bars) for (let e = 0; e <= b.len; e += 3) {
+    const y = RH - (b.start + e - p) * ppe; if (y < 0 || y > RH) continue;
+    ctx.fillStyle = col.grid; ctx.fillRect(0, y, W, e === 0 ? 2 : 1);
+    if (e === 0) { ctx.fillStyle = col.muted; ctx.font = '11px ' + getComputedStyle(document.body).fontFamily; ctx.fillText('Bar ' + b.n, 6, y - 4); }
+  }
+  const active = {};
+  const accOn = $('accOn').checked, melOn = $('melOn').checked;
+  for (const e of events) {
+    if (e.t > p + LOOK) break;
+    if (e.t + e.d < p) continue;
+    if (e.bus === 'acc' && !accOn || e.bus === 'mel' && !melOn) continue;
+    const g = x[e.m]; if (!g) continue;
+    const y1 = RH - (e.t - p) * ppe, y0 = RH - (e.t + e.d - p) * ppe;
+    const c = e.bus === 'mel' ? col.melody : e.bass ? col.bass : col.chord;
+    ctx.fillStyle = c; rr(ctx, g.x + 1.5, y0 + 1, g.w - 3, Math.max(4, y1 - y0 - 2), 4); ctx.fill();
+    if (e.t <= p + 1e-6 && p < e.t + e.d) active[e.m] = c;
+  }
+  if (flash && performance.now() < flash.until) flash.notes.forEach(m => active[m] = active[m] || col.chord);
+  // keys
+  k.fillStyle = col.line; k.fillRect(0, 0, W, KH);
+  const chordPcs = new Set(Object.keys(curNames).map(Number));
+  for (let pass = 0; pass < 2; pass++) for (let m = LO; m <= HI; m++) {
+    const g = x[m]; if (g.black !== !!pass) continue;
+    const h = g.black ? KH * 0.62 : KH;
+    k.fillStyle = active[m] || (g.black ? col['key-black'] : col['key-white']);
+    rr(k, g.x + 0.5, -4, g.w - 1, h + 4 - 1, 3); k.fill();
+    if (!active[m] && chordPcs.has(m % 12)) {
+      k.strokeStyle = col.chord; k.lineWidth = 2; rr(k, g.x + 2, h - (g.black ? 18 : 22), g.w - 4, g.black ? 14 : 18, 3); k.stroke();
+    }
+    if (active[m]) {
+      const nm = curNames[m % 12] || FLATS[m % 12];
+      k.fillStyle = g.black ? col['key-black'] : col['key-white'];
+      k.font = `600 ${Math.max(9, Math.min(12, g.w * 0.55))}px ` + getComputedStyle(document.body).fontFamily;
+      k.textAlign = 'center'; k.fillText(nm, g.x + g.w / 2, h - 8); k.textAlign = 'left';
+    } else if (m % 12 === 0 && !g.black) {
+      k.fillStyle = col.muted; k.font = '10px ' + getComputedStyle(document.body).fontFamily; k.textAlign = 'center'; k.fillText('C' + (m / 12 - 1), g.x + g.w / 2, KH - 6); k.textAlign = 'left';
+    }
+  }
+  // hit line
+  ctx.fillStyle = col.melody; ctx.globalAlpha = 0.5; ctx.fillRect(0, RH - 2, W, 2); ctx.globalAlpha = 1;
+  if ($('foldSheet').open) drawSheet(p);
+  requestAnimationFrame(draw);
+}
+keys.addEventListener('pointerdown', ev => {
+  const r = keys.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top;
+  let hit = null;
+  for (let m = LO; m <= HI; m++) { const g = geo.x[m]; if (g.black && py < geo.KH * 0.62 && px >= g.x && px < g.x + g.w) hit = m; }
+  if (hit == null) for (let m = LO; m <= HI; m++) { const g = geo.x[m]; if (!g.black && px >= g.x && px < g.x + g.w) hit = m; }
+  if (hit == null) return;
+  initAudio(); ac.resume(); playNote(hit, ac.currentTime + 0.01, 0.9, 0.25, 'ui');
+  flash = { notes: [hit], until: performance.now() + 500 };
+});
+
+
+/* ---------- sheet music (simplified engraving drawn on a canvas) ---------- */
+const sheetC = $('sheet');
+const SP = 7, Y_T = 48, Y_B = Y_T + 4 * SP + 46, PPE = 26, LEFT = 86;
+const FLAT_ORDER = [6, 2, 5, 1, 4, 0, 3], SHARP_ORDER = [3, 0, 4, 1, 5, 2, 6];
+const keyAt = t => { let k = D.keys[0][1]; for (const [kt, kv] of D.keys) if (kt <= t + 1e-6) k = kv; return k; };
+const keyAcc = (step, k) => k < 0 ? (FLAT_ORDER.slice(0, -k).includes(step) ? -1 : 0) : (SHARP_ORDER.slice(0, k).includes(step) ? 1 : 0);
+const stateAt = (list, st, t, init) => { let v = init; for (const [et, es, ev] of list) if (es === st && et <= t + 1e-6) v = ev; return v; };
+const clefAt = (st, t) => stateAt(D.clefs, st, t, 'G'), ottAt = (st, t) => stateAt(D.otts, st, t, 0);
+const ACC = { '-2': '♭♭', '-1': '♭', '0': '♮', '1': '♯', '2': '×' };
+const SG = [], BEAMS = [];
+{
+  const map = new Map();
+  for (const [t, d, st, ds, acc, v, m] of D.sh) {
+    const k = t + '|' + d + '|' + st + '|' + v;
+    let g = map.get(k);
+    if (!g) { g = { t, d, st, v, bar: Math.floor(t / 9 + 1e-6), ns: [] }; map.set(k, g); SG.push(g); }
+    g.ns.push({ ds, acc, m });
+  }
+  SG.sort((a, b) => a.t - b.t || a.st - b.st);
+  const mem = {}, poly = {};
+  for (const g of SG) {
+    const clef = clefAt(g.st, g.t), ott = ottAt(g.st, g.t), k = keyAt(g.t);
+    for (const n of g.ns) {
+      n.pos = n.ds - 7 * ott - (clef === 'G' ? 30 : 18);
+      const mk = g.bar + '|' + g.st + '|' + n.ds, cur = mk in mem ? mem[mk] : keyAcc(n.ds % 7, k);
+      if (n.acc !== cur) { n.show = ACC[n.acc]; mem[mk] = n.acc; }
+    }
+    g.ns.sort((a, b) => a.pos - b.pos);
+    g.lo = g.ns[0].pos; g.hi = g.ns[g.ns.length - 1].pos;
+    (poly[g.bar + '|' + g.st] = poly[g.bar + '|' + g.st] || new Set()).add(g.v % 2);
+  }
+  for (const g of SG) g.up = poly[g.bar + '|' + g.st].size > 1 ? g.v % 2 === 0 : (g.lo + g.hi) / 2 < 4;
+  // beams: runs of short notes in one voice, one staff, one beat
+  const last = {};
+  for (const g of SG) {
+    if (g.d > 1.5 + 1e-6) continue;
+    const key = g.v + '|' + g.st, p = last[key];
+    if (p && Math.abs(p.t + p.d - g.t) < 1e-6 && Math.floor(p.t / 3 + 1e-6) === Math.floor(g.t / 3 + 1e-6)) {
+      if (!p.beam) { p.beam = { gs: [p] }; BEAMS.push(p.beam); }
+      g.beam = p.beam; g.beam.gs.push(g);
+    }
+    last[key] = g;
+  }
+  for (const b of BEAMS) {
+    const lo = Math.min(...b.gs.map(g => g.lo)), hi = Math.max(...b.gs.map(g => g.hi));
+    b.up = poly[b.gs[0].bar + '|' + b.gs[0].st].size > 1 ? b.gs[0].v % 2 === 0 : (lo + hi) / 2 < 4;
+    b.gs.forEach(g => g.up = b.up);
+    // beam line in "pos" units: from the first note's stem end to the last's, kept nearly flat and clear of every note
+    const end = g => b.up ? g.hi + 6.5 : g.lo - 6.5;
+    let a = end(b.gs[0]), z = end(b.gs[b.gs.length - 1]);
+    if (Math.abs(z - a) > 2) z = a + Math.sign(z - a) * 2;
+    const t0 = b.gs[0].t, t1 = b.gs[b.gs.length - 1].t;
+    const at = t => a + (z - a) * (t1 > t0 ? (t - t0) / (t1 - t0) : 0);
+    let push = 0;
+    for (const g of b.gs) push = Math.max(push, b.up ? g.hi + 5 - at(g.t) : at(g.t) - (g.lo - 5));
+    b.a = a + (b.up ? push : -push); b.z = z + (b.up ? push : -push); b.t0 = t0; b.t1 = t1;
+    b.at = t => b.a + (b.z - b.a) * (t1 > t0 ? (t - t0) / (t1 - t0) : 0);
+  }
+}
+const OTT_SPANS = [];
+for (let st = 0; st < 2; st++) { let on = null; for (const [t, es, v] of D.otts) if (es === st) { if (v && on === null) on = t; else if (!v && on !== null) { OTT_SPANS.push([on, t, st]); on = null; } } if (on !== null) OTT_SPANS.push([on, D.end, st]); }
+const MUSIC_FONT = '"Noto Music", "Apple Symbols", "Segoe UI Symbol", serif';
+try { document.fonts.load('40px "Noto Music"', '𝄞𝄢♭♯♮'); } catch (e) {}
+
+function drawSheet(p) {
+  const r = sheetC.getBoundingClientRect(); if (!r.height || !sheetC.width) return;
+  const W = r.width, H = r.height, c = sheetC.getContext('2d');
+  const x0 = LEFT + Math.min(W * 0.22, 220), X = t => x0 + (t - p) * PPE;
+  const bottom = st => (st ? Y_B : Y_T) + 4 * SP, Y = (st, pos) => bottom(st) - pos * SP / 2;
+  const staffLines = (xa, xb) => { c.strokeStyle = col.muted; c.lineWidth = 1; c.globalAlpha = 0.55; c.beginPath(); for (const y of [Y_T, Y_B]) for (let i = 0; i < 5; i++) { c.moveTo(xa, y + i * SP + 0.5); c.lineTo(xb, y + i * SP + 0.5); } c.stroke(); c.globalAlpha = 1; };
+  c.fillStyle = col.surface; c.fillRect(0, 0, W, H);
+  staffLines(0, W);
+  c.font = '11px ' + getComputedStyle(document.body).fontFamily; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+  for (const b of D.bars) {
+    const x = Math.round(X(b.start)) - 12; if (x < LEFT - 20 || x > W + 20) continue;
+    c.strokeStyle = col.muted; c.lineWidth = 1; c.beginPath(); c.moveTo(x + 0.5, Y_T); c.lineTo(x + 0.5, Y_B + 4 * SP); c.stroke();
+    c.fillStyle = col.muted; c.fillText(b.n, x + 4, Y_T - 7);
+  }
+  // key changes: say so above the staff (the signature at the left follows the playhead)
+  c.font = 'italic 12px ' + getComputedStyle(document.body).fontFamily; c.fillStyle = col.melody;
+  for (const [kt, kv] of D.keys) { const x = X(kt) - 8; if (kt > 0 && x > LEFT && x < W) c.fillText(`key changes: ${Math.abs(kv)} ${kv < 0 ? 'flats' : 'sharps'}`, x, Y_T - 22); }
+  // 8va brackets
+  for (const [a, z, st] of OTT_SPANS) {
+    const xa = X(a) - 8, xb = X(z) - 16; if (xb < LEFT || xa > W) continue;
+    const y = (st ? Y_B : Y_T) - 38;
+    c.fillStyle = col.muted; c.font = 'italic 12px ' + getComputedStyle(document.body).fontFamily; c.fillText('8va', Math.max(xa, LEFT + 4), y + 4);
+    c.strokeStyle = col.muted; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(Math.max(xa, LEFT + 4) + 26, y); c.lineTo(xb, y); c.lineTo(xb, y + 7); c.stroke(); c.setLineDash([]);
+  }
+  // clef changes
+  c.fillStyle = col.ink; c.textAlign = 'center';
+  for (let st = 0; st < 2; st++) { let prev = 'G'; for (const [t, es, v] of D.clefs) if (es === st) { if (v !== prev) { const x = X(t) - 22; if (x > LEFT && x < W) drawClef(c, v, x, st, 0.72); } prev = v; } }
+  const rx = SP * 0.64, ry = SP * 0.46;
+  const stemEnd = g => g.beam ? g.beam.at(g.t) : (g.up ? g.hi + 6.5 : g.lo - 6.5);
+  for (const g of SG) {
+    const x = X(g.t); if (x > W + 30) break; if (x < LEFT - 30) continue;
+    const on = g.t <= p + 1e-6 && p < g.t + g.d - 1e-6;
+    const ink = on ? (g.st ? col.chord : col.melody) : col.ink;
+    c.strokeStyle = ink; c.fillStyle = ink; c.lineWidth = 1.1;
+    // ledger lines
+    c.beginPath();
+    for (let q = -2; q >= g.lo; q -= 2) { c.moveTo(x - rx - 3, Y(g.st, q) + 0.5); c.lineTo(x + rx + 3, Y(g.st, q) + 0.5); }
+    for (let q = 10; q <= g.hi; q += 2) { c.moveTo(x - rx - 3, Y(g.st, q) + 0.5); c.lineTo(x + rx + 3, Y(g.st, q) + 0.5); }
+    c.stroke();
+    // heads, dots, accidentals
+    const hollow = g.d >= 4 - 1e-6, base = Math.pow(2, Math.floor(Math.log2(g.d) + 1e-6)), dotted = Math.abs(g.d / base - 1.5) < 0.06;
+    let prevPos = -99, prevShift = false;
+    for (const n of g.ns) {
+      const shift = n.pos - prevPos === 1 && !prevShift, hx = x + (shift ? (g.up ? 2 * rx - 1 : -2 * rx + 1) : 0), y = Y(g.st, n.pos);
+      prevPos = n.pos; prevShift = shift;
+      c.beginPath(); c.ellipse(hx, y, rx, ry, -0.35, 0, Math.PI * 2);
+      if (hollow) { c.lineWidth = 1.5; c.stroke(); c.lineWidth = 1.1; } else c.fill();
+      if (dotted) { c.beginPath(); c.arc(x + rx + 4.5 + (shift && g.up ? 2 * rx : 0), y - (n.pos % 2 === 0 ? SP / 2 : 0), 1.4, 0, Math.PI * 2); c.fill(); }
+      if (n.show) { c.font = `${SP * 2.3}px ${MUSIC_FONT}`; c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(n.show, x - rx - 2.5, y + (n.show === '♭' || n.show === '♭♭' ? -SP * 0.35 : 0)); }
+    }
+    // stem
+    const sx = g.up ? x + rx - 0.6 : x - rx + 0.6, ye = Y(g.st, stemEnd(g));
+    c.beginPath(); c.moveTo(sx, Y(g.st, g.up ? g.lo : g.hi)); c.lineTo(sx, ye); c.stroke();
+    if (!g.beam && g.d <= 1.5 + 1e-6) {   // flags
+      const nf = g.d <= 0.75 + 1e-6 ? 2 : 1, dir = g.up ? 1 : -1;
+      c.lineWidth = 1.6; c.beginPath();
+      for (let f = 0; f < nf; f++) { c.moveTo(sx, ye + dir * f * 4.5); c.quadraticCurveTo(sx + 7, ye + dir * (f * 4.5 + 5), sx + 5, ye + dir * (f * 4.5 + 11)); }
+      c.stroke(); c.lineWidth = 1.1;
+    }
+  }
+  // beams
+  for (const b of BEAMS) {
+    const xa = X(b.t0), xb = X(b.t1); if (xb < LEFT - 30 || xa > W + 30) continue;
+    const st = b.gs[0].st, off = b.up ? rx - 0.6 : -rx + 0.6, th = SP * 0.5 * (b.up ? 1 : -1);
+    const on = b.gs.some(g => g.t <= p + 1e-6 && p < g.t + g.d - 1e-6);
+    c.fillStyle = on ? (st ? col.chord : col.melody) : col.ink;
+    const seg = (ta, tb, lvl) => { const ya = Y(st, b.at(ta)) + lvl * th * 1.6, yb = Y(st, b.at(tb)) + lvl * th * 1.6; c.beginPath(); c.moveTo(X(ta) + off, ya); c.lineTo(X(tb) + off, yb); c.lineTo(X(tb) + off, yb + th); c.lineTo(X(ta) + off, ya + th); c.closePath(); c.fill(); };
+    seg(b.t0, b.t1, 0);
+    for (let i = 0; i < b.gs.length; i++) {
+      const g = b.gs[i]; if (g.d > 0.75 + 1e-6) continue;
+      const nx = b.gs[i + 1], pv = b.gs[i - 1];
+      if (nx && nx.d <= 0.75 + 1e-6) seg(g.t, nx.t, 1);
+      else if (!pv || pv.d > 0.75 + 1e-6) { const dt = 0.3 * (nx ? 1 : -1); seg(Math.min(g.t, g.t + dt), Math.max(g.t, g.t + dt), 1); }
+    }
+  }
+  // fixed left panel: clefs and key signature for what is at the left edge
+  const tl = p - (x0 - LEFT) / PPE;
+  c.fillStyle = col.surface; c.fillRect(0, 0, LEFT, H); staffLines(0, LEFT);
+  const k = keyAt(Math.max(p, 0));
+  for (let st = 0; st < 2; st++) {
+    const clef = clefAt(st, Math.max(tl, 0));
+    c.fillStyle = col.ink; drawClef(c, clef, 16, st, 1);
+    const posF = clef === 'G' ? [4, 7, 3, 6, 2, 5, 1] : [2, 5, 1, 4, 0, 3, -1], posS = clef === 'G' ? [8, 5, 9, 6, 3, 7, 4] : [6, 3, 7, 4, 1, 5, 2];
+    c.font = `${SP * 2.3}px ${MUSIC_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    for (let i = 0; i < Math.abs(k); i++) c.fillText(k < 0 ? '♭' : '♯', 36 + i * 9, Y(st, (k < 0 ? posF : posS)[i]) + (k < 0 ? -SP * 0.35 : 0));
+  }
+  c.strokeStyle = col.muted; c.lineWidth = 1; c.beginPath(); c.moveTo(0.5, Y_T); c.lineTo(0.5, Y_B + 4 * SP); c.stroke();
+  // playhead
+  c.strokeStyle = col.melody; c.globalAlpha = 0.7; c.lineWidth = 2; c.beginPath(); c.moveTo(x0, Y_T - 16); c.lineTo(x0, Y_B + 4 * SP + 16); c.stroke(); c.globalAlpha = 1;
+  c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+}
+function drawClef(c, clef, x, st, scale) {
+  const top = st ? Y_B : Y_T;
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  if (clef === 'G') { c.font = `${SP * 5.5 * scale}px ${MUSIC_FONT}`; c.fillText('𝄞', x, top + 4 * SP - 1 + (1 - scale) * -SP); }
+  else { c.font = `${SP * 5.4 * scale}px ${MUSIC_FONT}`; c.fillText('𝄢', x, top + SP * 3.6 * scale + (1 - scale) * SP); }
+}
+for (const id of ['foldChords', 'foldSheet']) {
+  const el = $(id);
+  try { const v = localStorage.getItem('cdl-' + id); if (v !== null) el.open = v === '1'; } catch (e) {}
+  el.addEventListener('toggle', () => { try { localStorage.setItem('cdl-' + id, el.open ? '1' : '0'); } catch (e) {} layout(); });
+}
+
+readColors(); layout(); buildEvents();
+window.addEventListener('resize', () => { layout(); });
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors); } catch (e) {}
+new MutationObserver(readColors).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+// keep the middle of the keyboard in view on narrow screens
+requestAnimationFrame(() => { const sc = $('pianoScroll'); sc.scrollLeft = (sc.scrollWidth - sc.clientWidth) * 0.55; });
+requestAnimationFrame(draw);
+</script>

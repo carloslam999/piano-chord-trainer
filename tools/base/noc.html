@@ -1,0 +1,722 @@
+<meta charset="utf-8">
+<title>Nocturne Op. 9 No. 2 Chord Trainer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a "music stand" — chord card + controls above a falling-notes piano, then the bar-by-bar chord map. */
+:root {
+  --bg: #F1F0F6; --surface: #FFFFFF; --ink: #1C1B2E; --muted: #5C5A76; --line: #D8D6E4;
+  --melody: #A8721A; --melody-soft: #F3E3C0; --chord: #2C6590; --chord-soft: #D3E3F0; --bass: #1B4468;
+  --key-white: #FCFCFE; --key-black: #26253C; --roll-bg: #E8E7F0; --grid: #D2D0E0; --on-accent: #FFFFFF;
+  --font-display: "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
+  --font-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E0F1E; --surface: #171931; --ink: #ECEAF6; --muted: #A2A0C0; --line: #2C2E4C;
+  --melody: #E8BA5C; --melody-soft: #3F3218; --chord: #7DB3DC; --chord-soft: #1C3451; --bass: #B4D4EE;
+  --key-white: #E6E5EF; --key-black: #14132A; --roll-bg: #10122A; --grid: #23264A; --on-accent: #0E0F1E;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0E0F1E; --surface: #171931; --ink: #ECEAF6; --muted: #A2A0C0; --line: #2C2E4C;
+  --melody: #E8BA5C; --melody-soft: #3F3218; --chord: #7DB3DC; --chord-soft: #1C3451; --bass: #B4D4EE;
+  --key-white: #E6E5EF; --key-black: #14132A; --roll-bg: #10122A; --grid: #23264A; --on-accent: #0E0F1E;
+  color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 56px; display: grid; gap: 22px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 500; text-wrap: balance; margin: 0; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+[hidden] { display: none !important; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--chord); outline-offset: 2px; }
+
+/* Header */
+.top { display: grid; gap: 4px; }
+.top h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.08; letter-spacing: -.01em; }
+.top h1 em { font-style: italic; color: var(--melody); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 14px; }
+.meta b { color: var(--ink); font-weight: 600; }
+.intro { max-width: 64ch; margin: 4px 0 0; color: var(--muted); }
+
+/* Stage */
+.stage { display: grid; gap: 14px; }
+.board { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.6fr); gap: 14px; }
+@media (max-width: 820px) { .board { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; min-width: 0; }
+
+.now { display: grid; gap: 8px; align-content: start; }
+.now-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.now-sym { font-family: var(--font-display); font-size: clamp(46px, 7vw, 64px); line-height: .9; color: var(--chord); }
+.now-rom { font-family: var(--font-display); font-style: italic; font-size: 24px; color: var(--muted); }
+.tones { display: flex; flex-wrap: wrap; gap: 6px; }
+.tone { padding: 3px 10px; border-radius: 999px; background: var(--chord-soft); color: var(--ink); font-weight: 600; font-size: 14px; }
+.tone.root { background: var(--chord); color: var(--on-accent); }
+.next { color: var(--muted); font-size: 14px; }
+.next b { color: var(--ink); font-family: var(--font-display); font-size: 18px; font-weight: 600; }
+.counter { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.counter .pos { font-size: 14px; color: var(--muted); min-width: 120px; }
+.counter .pos b { color: var(--ink); }
+.meter { display: flex; gap: 8px; }
+.meter .beat { display: flex; gap: 3px; padding: 4px 5px; border-radius: 6px; background: var(--bg); }
+.meter i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: block; }
+.meter i.big { width: 11px; height: 11px; margin-top: -1px; }
+.meter i.on { background: var(--melody); }
+.sec-tag { font-size: 13px; color: var(--muted); }
+.sec-tag b { font-family: var(--font-display); color: var(--ink); font-size: 16px; }
+
+.controls { display: grid; gap: 10px; align-content: start; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.btn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 8px 16px; cursor: pointer; font-weight: 600; }
+.btn:hover { border-color: var(--chord); }
+.btn.primary { background: var(--chord); color: var(--on-accent); border-color: var(--chord); min-width: 108px; }
+.field { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.field select, .field input[type=number] { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.field input[type=number] { width: 4.2em; }
+.tempo { flex: 1 1 260px; display: grid; gap: 4px; }
+.tempo label { font-size: 14px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.tempo label b { color: var(--ink); font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--chord); }
+.switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; user-select: none; }
+.switch input { width: 18px; height: 18px; accent-color: var(--chord); }
+.swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+kbd { font-family: var(--font-ui); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
+
+.piano { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.piano-scroll { overflow-x: auto; }
+.piano-inner { min-width: 760px; }
+.piano canvas { display: block; width: 100%; }
+#roll { height: 180px; }
+#keys { height: 96px; cursor: pointer; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.strip { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+.strip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.strip-bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); gap: 8px; overflow-x: auto; position: relative; padding: 2px; }
+.strip .bar { background: var(--bg); padding: 5px 8px 7px; gap: 4px; }
+.strip .chip { padding: 5px 2px 4px; }
+
+/* Chord map */
+.map { display: grid; gap: 22px; }
+.map-head { display: grid; gap: 6px; }
+.map-head h2 { font-size: clamp(28px, 4vw, 38px); }
+.map-head p { margin: 0; max-width: 70ch; color: var(--muted); }
+.section { display: grid; gap: 10px; }
+.section-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.section-head h3 { font-size: 26px; min-width: 2.2em; }
+.section-head .what { color: var(--muted); max-width: 72ch; font-size: 14px; }
+.section-head .loopit { margin-left: auto; font-size: 13px; padding: 4px 12px; }
+.bars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 760px) { .bars { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bar { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 6px; min-width: 0; }
+.bar.wide { grid-column: span 2; }
+.bar.cur { border-color: var(--melody); box-shadow: 0 0 0 1px var(--melody); }
+.bar-n { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar-n button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 2px; font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
+.chips { display: flex; gap: 3px; }
+.chip { min-width: 0; border: 0; border-radius: 6px; background: var(--chord-soft); color: var(--ink); padding: 8px 2px 6px; cursor: pointer; display: grid; justify-items: center; gap: 1px; overflow: hidden; }
+.chip:hover { outline: 1px solid var(--chord); }
+.chip .s { font-family: var(--font-display); font-weight: 600; font-size: 17px; line-height: 1.1; white-space: nowrap; }
+.chip .ro { font-size: 11px; color: var(--muted); white-space: nowrap; font-style: italic; }
+.stack { display: grid; gap: 2px; min-width: 0; }
+.chip.tiny { padding: 2px; }
+.chip.tiny .s { font-size: 13px; }
+.chip.tiny .ro { display: none; }
+.chip.cur { background: var(--chord); color: var(--on-accent); }
+.chip.cur .ro { color: var(--on-accent); opacity: .85; }
+.beats { display: grid; grid-template-columns: repeat(4, 1fr); font-size: 10px; color: var(--muted); letter-spacing: .04em; }
+.beats span { border-left: 1px solid var(--line); padding-left: 3px; }
+
+/* Learn */
+.learn { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 820px) { .learn { grid-template-columns: minmax(0, 1fr); } }
+.learn h2 { font-size: 26px; margin-bottom: 10px; }
+.learn ol { margin: 0; padding-left: 1.3em; display: grid; gap: 10px; }
+.learn li { max-width: 62ch; }
+.learn li b { font-weight: 600; }
+.glossary { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; margin: 0; font-size: 14px; }
+.glossary dt { font-family: var(--font-display); font-weight: 600; font-size: 17px; }
+.glossary dd { margin: 0; color: var(--muted); }
+footer { font-size: 13px; color: var(--muted); max-width: 90ch; }
+footer a { color: var(--chord); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Frédéric Chopin · composed 1830–32</div>
+    <h1>Nocturne in <em>E♭</em> major, Op. 9 No. 2</h1>
+    <div class="meta"><span><b>Key</b> E♭ major</span><span><b>Time</b> 12/8, four beats of three</span><span><b>Andante</b> ♪ = 132</span><span><b>Length</b> 34 bars</span></div>
+  </header>
+
+  <section class="stage" aria-label="Player">
+    <div class="board">
+      <div class="card now" aria-live="polite">
+        <div class="now-row">
+          <div class="eyebrow">Chord now</div>
+          <div class="sec-tag" id="secTag"><b>A</b> · the theme</div>
+        </div>
+        <div class="now-row" style="justify-content:flex-start;align-items:baseline;gap:16px">
+          <div class="now-sym" id="nowSym">E♭</div>
+          <div class="now-rom" id="nowRom">I</div>
+        </div>
+        <div class="tones" id="nowTones"></div>
+        <div class="next" id="nextChord">Next: <b>D°7</b></div>
+        <div class="counter">
+          <div class="pos" id="posText">Pickup note</div>
+          <div class="meter" id="meter" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="card controls">
+        <div class="row">
+          <button class="btn primary" id="playBtn" type="button">▶ Play</button>
+          <button class="btn" id="restartBtn" type="button">⟲ From the top</button>
+          <button class="btn" id="prevBar" type="button" aria-label="Previous bar">◀ Bar</button>
+          <button class="btn" id="nextBar" type="button" aria-label="Next bar">Bar ▶</button>
+        </div>
+        <div class="tempo">
+          <label for="tempo"><span>Speed (eighth notes per minute)</span><b id="tempoVal">90</b></label>
+          <input type="range" id="tempo" min="36" max="150" value="90" step="2">
+        </div>
+        <div class="row">
+          <label class="switch"><input type="checkbox" id="melOn" checked><span class="swatch" style="background:var(--melody)"></span>Melody</label>
+          <label class="switch"><input type="checkbox" id="accOn" checked><span class="swatch" style="background:var(--chord)"></span>Chords</label>
+          <label class="field" for="style">Chord style
+            <select id="style">
+              <option value="block">Block chords (easiest)</option>
+              <option value="pattern" selected>Nocturne pattern: bass, chord, chord</option>
+              <option value="orig">Chopin's own left hand</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label class="field" for="melTone">Melody sound
+            <select id="melTone">
+              <option value="warm" selected>Warm piano</option>
+              <option value="felt">Soft felt piano (mellowest)</option>
+              <option value="bright">Bright piano</option>
+            </select>
+          </label>
+          <label class="field" for="melVol">Melody volume
+            <input type="range" id="melVol" min="0" max="150" value="90" style="width:120px">
+          </label>
+        </div>
+        <div class="row">
+          <label class="field" for="loopMode">Repeat
+            <select id="loopMode">
+              <option value="off">Off, play through</option>
+              <option value="bar">This bar</option>
+              <option value="section">This section</option>
+              <option value="range">Bars from–to</option>
+            </select>
+          </label>
+          <span class="field" id="rangeBox" hidden>
+            <input type="number" id="loopFrom" min="1" max="34" value="1" aria-label="Loop from bar">to
+            <input type="number" id="loopTo" min="1" max="34" value="4" aria-label="Loop to bar">
+          </span>
+        </div>
+        <p class="hint" style="display:none"><kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> move a bar · tap any key to hear it · the bar's speed mark is ♪ = 132, so start slower.</p>
+      </div>
+    </div>
+
+    <div class="piano">
+      <div class="strip" id="strip" aria-label="Chords in this section">
+        <div class="strip-head"><span class="sec-tag" id="stripTitle"></span><span id="stripNext"></span></div>
+        <div class="strip-bars" id="stripBars"></div>
+      </div>
+      <div class="piano-scroll" id="pianoScroll">
+        <div class="piano-inner">
+          <canvas id="roll" aria-label="Falling notes"></canvas>
+          <canvas id="keys" aria-label="Piano keyboard"></canvas>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--melody)"></span>Melody, right hand</span>
+        <span><span class="swatch" style="background:var(--chord)"></span>Chord, left hand</span>
+        <span><span class="swatch" style="background:var(--bass)"></span>Bass note</span>
+        <span>Outlined keys = notes of the current chord</span>
+        <span><kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> move a bar</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="map" aria-label="Chord map">
+    <div class="map-head">
+      <div class="eyebrow">Bar by bar</div>
+      <h2>The chord map</h2>
+      <p>The strip above the piano shows the section being played; this is the whole piece. Each card is one bar: four beats, each three eighth notes long (count “1-and-a, 2-and-a…”). A chord's width shows how long it lasts. Tap a chord to hear it and jump there; tap “play” on a card to start from that bar.</p>
+    </div>
+    <div id="map"></div>
+  </section>
+
+  <section class="learn">
+    <div class="card">
+      <h2>How to practise it</h2>
+      <ol>
+        <li><b>Learn the eight chords of bars 1–4.</b> Loop section A with Melody off and Block chords on. Play each chord with your left hand as it arrives. Those four bars come back four times, so they are half the piece.</li>
+        <li><b>Hum the tune over them.</b> Turn Melody on and listen to how each gold note sits on its chord. Most long melody notes are chord tones.</li>
+        <li><b>Add the right hand slowly.</b> Speed 50–60, loop one bar. Follow the gold notes as they reach the keys.</li>
+        <li><b>Switch to the nocturne pattern.</b> Bass note on each beat, then the chord twice. It is the same harmony, spread out, and it gives the rocking 12/8 feel.</li>
+        <li><b>Move on to B and C.</b> B has the quick chord-per-eighth slide in bar 12; loop it alone. C leans on A♭ minor, the darker colour of the ending.</li>
+        <li><b>Treat the cadenza as free time.</b> In bar 32 hold B♭7, let the run float, then land on E♭.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>Reading the symbols</h2>
+      <dl class="glossary">
+        <dt>E♭</dt><dd>A plain letter is a major triad: root, major third, fifth (E♭ – G – B♭).</dd>
+        <dt>Fm, A♭m</dt><dd>“m” is a minor triad: the middle note is a half step lower.</dd>
+        <dt>B♭7</dt><dd>A dominant seventh: major triad plus a minor seventh. It wants to resolve, usually down a fifth (B♭7 → E♭).</dd>
+        <dt>D°7</dt><dd>A diminished seventh: four notes stacked in minor thirds. A tense, passing colour.</dd>
+        <dt>B♭7sus</dt><dd>The third (D) is replaced by the fourth (E♭), then resolves.</dd>
+        <dt>I, V⁷, ii</dt><dd>Roman numerals count chords from E♭. Upper case is major, lower case is minor. V⁷/ii means “the V⁷ of ii”, a chord borrowed to point at F minor.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <footer>
+    Chord symbols follow the bar-by-bar table in the guide at <a href="https://www.chopinlefthand.com/guides/chopin-nocturne-op9-no2-chords" target="_blank" rel="noopener">chopinlefthand.com</a>. Melody and Chopin's left hand are taken from the public-domain G. Schirmer 1881 edition as typeset by the <a href="https://www.mutopiaproject.org" target="_blank" rel="noopener">Mutopia Project</a> (Renato Biolcati Rinaldi, CC BY-SA 3.0), with ornaments and grace notes left out. Sound is a synthesised piano made in your browser.
+  </footer>
+</div>
+
+<script>
+const D = {"bars":[{"n":1,"start":1.0,"len":12.0,"chords":[["E♭","I",0.0,3.0],["D°7","vii°⁷",3.0,3.0],["E♭","I",6.0,6.0]]},{"n":2,"start":13.0,"len":12.0,"chords":[["C7","V⁷/ii",0.0,6.0],["E°7","vii°⁷/ii",6.0,3.0],["Fm","ii",9.0,3.0]]},{"n":3,"start":25.0,"len":12.0,"chords":[["B♭7","V⁷",0.0,3.0],["G7","V⁷/vi",3.0,3.0],["Cm","vi",6.0,3.0],["A°7","vii°⁷/V",9.0,3.0]]},{"n":4,"start":37.0,"len":12.0,"chords":[["B♭7","V⁷",0.0,6.0],["E♭","I",6.0,6.0]]},{"n":5,"start":49.0,"len":12.0,"chords":[["E♭","I",0.0,3.0],["D°7","vii°⁷",3.0,3.0],["E♭","I",6.0,6.0]]},{"n":6,"start":61.0,"len":12.0,"chords":[["C7","V⁷/ii",0.0,6.0],["E°7","vii°⁷/ii",6.0,3.0],["Fm","ii",9.0,3.0]]},{"n":7,"start":73.0,"len":12.0,"chords":[["B♭7","V⁷",0.0,3.0],["G7","V⁷/vi",3.0,3.0],["Cm","vi",6.0,3.0],["A°7","vii°⁷/V",9.0,3.0]]},{"n":8,"start":85.0,"len":12.0,"chords":[["B♭7","V⁷",0.0,6.0],["E♭","I",6.0,6.0]]},{"n":9,"start":97.0,"len":12.0,"chords":[["B♭","V",0.0,6.0],["F","V/V",6.0,6.0]]},{"n":10,"start":109.0,"len":12.0,"chords":[["A♭","IV",0.0,3.0],["A♭m","iv",3.0,3.0],["E♭","I",6.0,6.0]]},{"n":11,"start":121.0,"len":12.0,"chords":[["E°7","vii°⁷/ii",0.0,3.0],["C7","V⁷/ii",3.0,3.0],["F7","V⁷/V",6.0,3.0],["Gm","iii",9.0,3.0]]},{"n":12,"start":133.0,"len":12.0,"chords":[["Cm","vi",0.0,3.0],["F7","V⁷/V",3.0,3.0],["B♭","V",6.0,1.0],["B7","V⁷/♭II",7.0,1.0],["E","♭II",8.0,1.0],["C7","V⁷/ii",9.0,1.0],["F7","V⁷/V",10.0,1.0],["B♭7","V⁷",11.0,1.0]]},{"n":13,"start":145.0,"len":12.0,"chords":[["E♭","I",0.0,3.0],["B♭7","V⁷",3.0,3.0],["E♭","I",6.0,6.0]]},{"n":14,"start":157.0,"len":12.0,"chords":[["C7","V⁷/ii",0.0,6.0],["E°7","vii°⁷/ii",6.0,3.0],["Fm","ii",9.0,3.0]]},{"n":15,"start":169.0,"len":12.0,"chords":[["B♭7","V⁷",0.0,3.0],["G7","V⁷/vi",3.0,3.0],["Cm","vi",6.0,3.0],["A°7","vii°⁷/V",9.0,3.0]]},{"n":16,"start":181.0,"len":12.0,"chords":[["B♭7","V⁷",0.0,6.0],["E♭","I",6.0,6.0]]},{"n":17,"start":193.0,"len":12.0,"chords":[["B♭","V",0.0,6.0],["F","V/V",6.0,6.0]]},{"n":18,"start":205.0,"len":12.0,"chords":[["A♭","IV",0.0,3.0],["A♭m","iv",3.0,3.0],["E♭","I",6.0,6.0]]},{"n":19,"start":217.0,"len":12.0,"chords":[["E°7","vii°⁷/ii",0.0,3.0],["C7","V⁷/ii",3.0,3.0],["F7","V⁷/V",6.0,3.0],["Gm","iii",9.0,3.0]]},{"n":20,"start":229.0,"len":12.0,"chords":[["Cm","vi",0.0,3.0],["F7","V⁷/V",3.0,3.0],["B♭","V",6.0,1.0],["B7","V⁷/♭II",7.0,1.0],["E","♭II",8.0,1.0],["C7","V⁷/ii",9.0,1.0],["F7","V⁷/V",10.0,1.0],["B♭7","V⁷",11.0,1.0]]},{"n":21,"start":241.0,"len":12.0,"chords":[["E♭","I",0.0,3.0],["B♭7","V⁷",3.0,3.0],["E♭","I",6.0,6.0]]},{"n":22,"start":253.0,"len":12.0,"chords":[["C7","V⁷/ii",0.0,6.0],["E°7","vii°⁷/ii",6.0,3.0],["Fm","ii",9.0,3.0]]},{"n":23,"start":265.0,"len":12.0,"chords":[["B♭7","V⁷",0.0,3.0],["G7","V⁷/vi",3.0,3.0],["Cm","vi",6.0,3.0],["A°7","vii°⁷/V",9.0,3.0]]},{"n":24,"start":277.0,"len":12.0,"chords":[["B♭7","V⁷",0.0,6.0],["E♭","I",6.0,6.0]]},{"n":25,"start":289.0,"len":12.0,"chords":[["A♭m","iv",0.0,6.0],["E♭","I",6.0,6.0]]},{"n":26,"start":301.0,"len":12.0,"chords":[["A♭m","iv",0.0,6.0],["E♭","I",6.0,6.0]]},{"n":27,"start":313.0,"len":12.0,"chords":[["B♭7","V⁷",0.0,6.0],["E♭","I",6.0,3.0],["F7","V⁷/V",9.0,3.0]]},{"n":28,"start":325.0,"len":12.0,"chords":[["B♭7sus","V⁷sus",0.0,3.0],["B♭7","V⁷",3.0,3.0],["E♭","I",6.0,6.0]]},{"n":29,"start":337.0,"len":12.0,"chords":[["A♭m","iv",0.0,6.0],["E♭","I",6.0,6.0]]},{"n":30,"start":349.0,"len":12.0,"chords":[["A♭m","iv",0.0,6.0],["E♭","I",6.0,3.0],["F7","V⁷/V",9.0,3.0]]},{"n":31,"start":361.0,"len":12.0,"chords":[["B♭7sus","V⁷sus",0.0,3.0],["G7","V⁷/vi",3.0,3.0],["Cm","vi",6.0,3.0],["F7","V⁷/V",9.0,3.0]]},{"n":32,"start":373.0,"len":48.0,"chords":[["B♭7","V⁷",0.0,48.0]]},{"n":33,"start":421.0,"len":12.0,"chords":[["E♭","I",0.0,12.0]]},{"n":34,"start":433.0,"len":12.0,"chords":[["E♭","I",0.0,12.0]]}],"rh":[[0.0,1.0,[70]],[1.0,4.0,[79]],[5.0,1.0,[77]],[6.0,1.0,[79]],[7.0,3.0,[77]],[10.0,2.0,[75]],[12.0,1.0,[70]],[13.0,2.0,[79]],[15.0,1.0,[72]],[16.0,2.0,[84]],[18.0,1.0,[79]],[19.0,3.0,[82]],[22.0,2.0,[80]],[24.0,1.0,[79]],[25.0,3.0,[77]],[28.0,2.0,[79]],[30.0,1.0,[74]],[31.0,3.0,[75]],[34.0,3.0,[72]],[37.0,1.0,[70]],[38.0,1.0,[86]],[39.0,1.0,[84]],[40.0,0.5,[82]],[40.5,0.5,[80]],[41.0,0.5,[79]],[41.5,0.5,[80]],[42.0,0.5,[72]],[42.5,0.5,[74]],[43.0,3.0,[75]],[48.0,1.0,[70]],[49.0,3.0,[79]],[52.0,0.5,[77]],[52.5,0.5,[79]],[53.0,0.5,[77]],[53.5,0.5,[76]],[54.0,0.5,[77]],[54.5,0.5,[79]],[55.0,1.0,[77]],[56.0,2.5,[75]],[58.5,0.5,[77]],[59.0,0.5,[75]],[59.5,0.5,[74]],[60.0,0.5,[75]],[60.5,0.5,[77]],[61.0,0.5,[79]],[61.5,0.5,[71]],[62.0,0.5,[72]],[62.5,0.5,[73]],[63.0,0.5,[72]],[63.5,0.5,[77]],[64.0,0.5,[76]],[64.5,0.5,[80]],[65.0,0.5,[79]],[65.5,0.5,[85]],[66.0,0.5,[84]],[66.5,0.5,[79]],[67.0,3.0,[82]],[70.0,2.0,[80]],[72.0,1.0,[79]],[73.0,3.0,[77]],[76.0,1.0,[79]],[77.0,1.0,[79]],[78.0,1.0,[74]],[79.0,3.0,[75]],[82.0,3.0,[72]],[85.0,1.0,[70]],[86.0,1.0,[86]],[87.0,1.0,[84]],[88.0,0.5,[82]],[88.5,0.5,[80]],[89.0,0.5,[79]],[89.5,0.5,[80]],[90.0,0.5,[72]],[90.5,0.5,[74]],[91.0,4.0,[75]],[95.0,1.0,[74]],[96.0,1.0,[75]],[97.0,3.0,[77]],[100.0,2.0,[79]],[102.0,1.0,[77]],[103.0,3.0,[77]],[106.0,3.0,[72]],[109.0,1.0,[75]],[110.0,1.0,[75]],[111.0,1.0,[75]],[112.0,1.0,[75]],[113.0,0.5,[74]],[113.5,0.5,[75]],[114.0,0.75,[77]],[114.75,0.25,[75]],[115.0,3.0,[75]],[118.0,3.0,[70]],[121.0,3.0,[82]],[124.0,2.0,[81]],[126.0,1.0,[79]],[127.0,3.0,[69,77]],[130.0,3.0,[70,74]],[133.0,3.0,[67,75]],[136.0,1.0,[69,74]],[137.0,1.0,[69,72]],[138.0,1.0,[69,74]],[139.0,1.0,[65,70]],[140.0,1.0,[66,71]],[141.0,1.0,[64,71]],[142.0,1.0,[64,70,72]],[143.0,1.0,[65,69,72]],[144.0,1.0,[68,74]],[145.0,2.0,[79]],[147.0,0.5,[69]],[147.5,0.5,[70]],[148.0,0.5,[71]],[148.5,0.5,[70]],[149.0,0.5,[73]],[149.5,0.5,[74]],[150.0,0.75,[79]],[150.75,0.25,[77]],[151.0,2.0,[77]],[153.0,1.5,[75]],[154.5,0.5,[77]],[155.0,0.5,[75]],[155.5,0.5,[74]],[156.0,0.5,[75]],[156.5,0.5,[77]],[157.0,0.5,[79]],[157.5,0.5,[71]],[158.0,0.5,[72]],[158.5,0.5,[73]],[159.0,0.5,[72]],[159.5,0.5,[77]],[160.0,0.5,[76]],[160.5,0.5,[80]],[161.0,0.5,[79]],[161.5,0.5,[85]],[162.0,0.5,[84]],[162.5,0.5,[79]],[163.0,3.0,[82]],[166.0,2.0,[80]],[168.0,1.0,[79]],[169.0,3.0,[77]],[172.0,1.0,[79]],[173.0,1.0,[79]],[174.0,1.0,[74]],[175.0,3.0,[75]],[178.0,3.0,[72]],[181.0,1.0,[70]],[182.0,1.0,[86]],[183.0,1.0,[85]],[184.0,0.25,[84]],[184.25,0.25,[83]],[184.5,0.25,[82]],[184.75,0.25,[81]],[185.0,0.25,[80]],[185.25,0.25,[77]],[185.5,0.25,[74]],[185.75,0.25,[71]],[186.0,0.25,[70]],[186.25,0.25,[74]],[186.5,0.167,[79]],[186.667,0.167,[77]],[186.833,0.167,[75]],[187.0,4.0,[75]],[191.0,1.0,[74]],[192.0,1.0,[75]],[193.0,3.0,[77]],[196.0,2.0,[79]],[198.0,1.0,[77]],[199.0,3.0,[77]],[202.0,3.0,[72]],[205.0,0.75,[75]],[205.75,0.75,[75]],[206.5,0.75,[75]],[207.25,0.75,[75]],[208.0,1.0,[75]],[209.0,0.5,[74]],[209.5,0.5,[75]],[210.0,0.75,[77]],[210.75,0.25,[75]],[211.0,3.0,[75]],[214.0,3.0,[70]],[217.0,3.0,[82]],[220.0,2.0,[81]],[222.0,1.0,[79]],[223.0,3.0,[69,77]],[226.0,3.0,[70,74]],[229.0,3.0,[67,75]],[232.0,1.0,[69,74]],[233.0,1.0,[69,72]],[234.0,1.0,[69,74]],[235.0,1.0,[65,70]],[236.0,1.0,[66,71]],[237.0,1.0,[64,71]],[238.0,1.0,[64,70,72]],[239.0,1.0,[65,69,72]],[240.0,1.0,[68,74]],[241.0,2.0,[79]],[243.0,0.5,[69]],[243.5,0.5,[70]],[244.0,0.5,[71]],[244.5,0.5,[70]],[245.0,0.5,[73]],[245.5,0.5,[74]],[246.0,0.75,[79]],[246.75,0.25,[77]],[247.0,2.0,[77]],[249.0,1.5,[75]],[250.5,0.5,[77]],[251.0,0.5,[75]],[251.5,0.5,[74]],[252.0,0.5,[75]],[252.5,0.5,[77]],[253.0,0.5,[79]],[253.5,0.5,[71]],[254.0,0.5,[72]],[254.5,0.5,[73]],[255.0,0.5,[72]],[255.5,0.5,[77]],[256.0,0.5,[76]],[256.5,0.5,[80]],[257.0,0.5,[79]],[257.5,0.5,[85]],[258.0,0.5,[84]],[258.5,0.5,[79]],[259.0,3.0,[82]],[262.0,2.0,[80]],[264.0,1.0,[79]],[265.0,3.0,[77]],[268.0,1.0,[79]],[269.0,1.0,[79]],[270.0,1.0,[74]],[271.0,3.0,[75]],[274.0,3.0,[72]],[277.0,0.5,[70]],[277.5,1.0,[86]],[278.5,0.5,[85]],[279.0,0.5,[84]],[279.5,0.25,[83]],[279.75,0.5,[82]],[280.25,0.5,[81]],[280.75,0.25,[80]],[281.0,0.25,[69]],[281.25,0.25,[70]],[281.5,0.25,[71]],[281.75,0.25,[72]],[282.0,0.25,[73]],[282.25,0.25,[74]],[282.5,0.167,[79]],[282.667,0.167,[77]],[282.833,0.167,[75]],[283.0,6.0,[75]],[289.0,3.0,[75]],[292.0,1.0,[77]],[293.0,1.0,[75]],[294.0,1.0,[77]],[295.0,6.0,[79]],[301.0,3.5,[75]],[304.5,0.5,[77]],[305.0,0.5,[75]],[305.5,0.5,[77]],[306.0,0.5,[75]],[306.5,0.5,[77]],[307.0,2.0,[79]],[309.0,1.0,[75]],[310.0,1.0,[87]],[311.0,1.0,[86]],[312.0,1.0,[84]],[313.0,2.0,[82]],[315.0,1.0,[81]],[316.0,1.0,[80]],[317.0,1.0,[72]],[318.0,1.0,[74]],[319.0,1.0,[75]],[320.0,0.5,[77]],[320.5,0.5,[75]],[321.0,0.5,[74]],[321.5,0.5,[75]],[322.0,1.0,[91]],[323.0,0.5,[89]],[323.5,0.5,[87]],[324.0,0.5,[86]],[324.5,0.5,[84]],[325.0,1.0,[83]],[326.0,1.0,[82]],[327.0,1.0,[81]],[328.0,0.5,[81]],[328.5,0.5,[80]],[329.0,0.5,[80]],[329.5,0.5,[79]],[330.0,0.75,[79]],[330.75,0.25,[77]],[331.0,6.0,[75]],[337.0,3.375,[75]],[340.375,0.375,[77]],[340.75,0.375,[75]],[341.125,0.375,[77]],[341.5,0.375,[75]],[341.875,0.375,[77]],[342.25,0.375,[75]],[342.625,0.375,[77]],[343.0,3.0,[79]],[349.0,1.0,[75]],[350.0,0.5,[68]],[350.5,0.5,[70]],[351.0,0.5,[68]],[351.5,0.5,[67]],[352.0,0.5,[68]],[352.5,0.5,[71]],[353.0,0.5,[75]],[353.5,0.5,[80]],[354.0,0.5,[87]],[354.75,0.25,[89]],[355.0,1.0,[91]],[356.0,1.0,[87]],[357.0,2.0,[87,99]],[359.0,1.0,[86,98]],[360.0,1.0,[84,96]],[361.0,1.0,[83,95]],[362.0,1.0,[82,94]],[363.0,1.0,[81,93]],[364.0,1.0,[80,92]],[365.0,1.0,[79,91]],[366.0,1.0,[74,86]],[367.0,1.0,[75,87]],[368.0,3.0,[87,99]],[371.0,1.0,[77,89]],[372.0,1.0,[84,96]],[373.0,6.0,[83,95]],[381.0,6.0,[82,94]],[387.0,0.5,[95]],[387.5,0.5,[94]],[388.0,0.5,[96]],[388.5,0.5,[93]],[389.0,0.5,[95]],[389.5,0.5,[94]],[390.0,0.5,[96]],[390.5,0.5,[93]],[391.0,0.5,[95]],[391.5,0.5,[94]],[392.0,0.5,[96]],[392.5,0.5,[93]],[393.0,0.5,[95]],[393.5,0.5,[94]],[394.0,0.5,[96]],[394.5,0.5,[93]],[395.0,0.5,[95]],[395.5,0.5,[94]],[396.0,0.5,[96]],[396.5,0.5,[93]],[397.0,0.5,[95]],[397.5,0.5,[94]],[398.0,0.5,[96]],[398.5,0.5,[93]],[399.0,0.5,[95]],[399.5,0.5,[94]],[400.0,0.5,[96]],[400.5,0.5,[93]],[401.0,0.5,[95]],[401.5,0.5,[94]],[402.0,0.5,[96]],[402.5,0.5,[93]],[403.0,0.5,[95]],[403.5,0.5,[94]],[404.0,0.5,[96]],[404.5,0.5,[93]],[405.0,0.5,[95]],[405.5,0.5,[94]],[406.0,0.5,[96]],[406.5,0.5,[93]],[407.0,0.5,[95]],[407.5,0.5,[94]],[408.0,0.5,[96]],[408.5,0.5,[93]],[409.0,0.5,[95]],[409.5,0.5,[94]],[410.0,0.5,[96]],[410.5,0.5,[93]],[411.0,0.5,[95]],[411.5,0.5,[94]],[412.0,0.5,[98]],[412.5,0.5,[96]],[413.0,0.5,[94]],[413.5,0.5,[93]],[414.0,0.5,[92]],[414.5,0.5,[91]],[415.0,0.5,[89]],[415.5,0.5,[86]],[416.0,0.5,[87]],[416.5,0.5,[83]],[417.0,1.0,[82]],[418.0,1.0,[80]],[419.0,1.0,[72]],[420.0,1.0,[74]],[421.0,1.0,[67,75]],[422.0,1.0,[70]],[423.0,1.0,[79]],[424.0,1.0,[67,75]],[425.0,1.0,[70]],[426.0,1.0,[79]],[427.0,1.0,[67,75]],[428.0,1.0,[70]],[429.0,1.0,[79]],[430.0,1.0,[67,75]],[431.0,1.0,[70]],[432.0,1.0,[79]],[433.0,3.0,[67,75]],[436.0,3.0,[79,87]],[439.0,6.0,[55,63]]],"lh":[[1.0,1.0,[39]],[2.0,1.0,[55,63]],[3.0,1.0,[58,63,67]],[4.0,1.0,[51]],[5.0,1.0,[56,62]],[6.0,1.0,[59,62,68]],[7.0,1.0,[39]],[8.0,1.0,[55,63]],[9.0,1.0,[58,63,67]],[10.0,1.0,[38]],[11.0,1.0,[55,63]],[12.0,1.0,[58,63,67]],[13.0,1.0,[36]],[14.0,1.0,[55,64]],[15.0,1.0,[58,64,67]],[16.0,1.0,[48]],[17.0,1.0,[55,64]],[18.0,1.0,[60,64,70]],[19.0,1.0,[41]],[20.0,1.0,[53,61]],[21.0,1.0,[58,61,64]],[22.0,1.0,[41]],[23.0,1.0,[53,60]],[24.0,1.0,[56,60,65]],[25.0,1.0,[46]],[26.0,1.0,[53,62]],[27.0,1.0,[58,62,68]],[28.0,1.0,[47]],[29.0,1.0,[55,65]],[30.0,1.0,[62,65,67]],[31.0,1.0,[48]],[32.0,1.0,[55,63]],[33.0,1.0,[60,63,67]],[34.0,1.0,[45]],[35.0,1.0,[54,63]],[36.0,1.0,[60,63,66]],[37.0,1.0,[46]],[38.0,1.0,[53,63]],[39.0,1.0,[58,63,68]],[40.0,1.0,[34]],[41.0,1.0,[53,62]],[42.0,1.0,[58,68]],[43.0,1.0,[39]],[44.0,1.0,[55,63]],[45.0,1.0,[58,63,67]],[46.0,1.0,[51]],[47.0,1.0,[55,63]],[48.0,1.0,[58,63,67]],[49.0,1.0,[51]],[50.0,1.0,[55,63]],[51.0,1.0,[58,63,67]],[52.0,1.0,[51]],[53.0,1.0,[56,62]],[54.0,1.0,[59,62,68]],[55.0,1.0,[51]],[56.0,1.0,[55,63]],[57.0,1.0,[58,63,67]],[58.0,1.0,[50]],[59.0,1.0,[55,63]],[60.0,1.0,[58,63,67]],[61.0,1.0,[48]],[62.0,1.0,[55,64]],[63.0,1.0,[58,64,67]],[64.0,1.0,[48]],[65.0,1.0,[55,64]],[66.0,1.0,[60,64,70]],[67.0,1.0,[41]],[68.0,1.0,[53,61]],[69.0,1.0,[58,61,64]],[70.0,1.0,[41]],[71.0,1.0,[53,60]],[72.0,1.0,[56,60,65]],[73.0,1.0,[46]],[74.0,1.0,[53,62]],[75.0,1.0,[58,62,68]],[76.0,1.0,[47]],[77.0,1.0,[55,65]],[78.0,1.0,[62,65,67]],[79.0,1.0,[48]],[80.0,1.0,[55,63]],[81.0,1.0,[60,63,67]],[82.0,1.0,[45]],[83.0,1.0,[54,63]],[84.0,1.0,[60,63,66]],[85.0,1.0,[46]],[86.0,1.0,[53,63]],[87.0,1.0,[58,63,68]],[88.0,1.0,[34]],[89.0,1.0,[53,62]],[90.0,1.0,[58,68]],[91.0,1.0,[39]],[92.0,1.0,[55,63]],[93.0,1.0,[58,63,67]],[94.0,1.0,[51]],[95.0,1.0,[55,63]],[96.0,1.0,[58,63,67]],[97.0,1.0,[46]],[98.0,1.0,[53,62]],[99.0,1.0,[58,62,65]],[100.0,1.0,[46]],[101.0,1.0,[53,62]],[102.0,1.0,[58,62,65]],[103.0,1.0,[45]],[104.0,1.0,[53,60]],[105.0,1.0,[60,65]],[106.0,1.0,[45]],[107.0,1.0,[53,60]],[108.0,1.0,[60,65]],[109.0,1.0,[44]],[110.0,1.0,[51,60]],[111.0,1.0,[56,60,63]],[112.0,1.0,[32]],[113.0,1.0,[51,59]],[114.0,1.0,[56,59,63]],[115.0,1.0,[39]],[116.0,1.0,[55,63]],[117.0,1.0,[58,63,67]],[118.0,1.0,[51]],[119.0,1.0,[55,63]],[120.0,1.0,[58,63,67]],[121.0,1.0,[40]],[122.0,1.0,[52,61]],[123.0,1.0,[58,61,67]],[124.0,1.0,[40]],[125.0,1.0,[52,60]],[126.0,1.0,[58,60,67]],[127.0,1.0,[41]],[128.0,1.0,[53,63]],[129.0,1.0,[60,63,65]],[130.0,1.0,[43]],[131.0,1.0,[55,62]],[132.0,1.0,[58,62,67]],[133.0,1.0,[36]],[134.0,1.0,[55,63]],[135.0,1.0,[60,63,67]],[136.0,1.0,[41]],[137.0,1.0,[53,63]],[138.0,1.0,[60,63,65]],[139.0,1.0,[58,62]],[140.0,1.0,[57,63]],[141.0,1.0,[56]],[142.0,1.0,[55]],[143.0,1.0,[53,60,63]],[144.0,1.0,[58,65]],[145.0,1.0,[39]],[146.0,1.0,[55,63]],[147.0,1.0,[58,63,67]],[148.0,1.0,[51]],[149.0,1.0,[56,62]],[150.0,1.0,[58,62,68]],[151.0,1.0,[51]],[152.0,1.0,[55,63]],[153.0,1.0,[58,67]],[154.0,1.0,[50]],[155.0,1.0,[55,63]],[156.0,1.0,[58,63,67]],[157.0,1.0,[48]],[158.0,1.0,[55,64]],[159.0,1.0,[58,64,67]],[160.0,1.0,[48]],[161.0,1.0,[55,64]],[162.0,1.0,[60,64,70]],[163.0,1.0,[41]],[164.0,1.0,[53,61]],[165.0,1.0,[58,61,64]],[166.0,1.0,[41]],[167.0,1.0,[53,60]],[168.0,1.0,[56,60,65]],[169.0,1.0,[46]],[170.0,1.0,[53,62]],[171.0,1.0,[58,62,68]],[172.0,1.0,[47]],[173.0,1.0,[55,65]],[174.0,1.0,[62,65,67]],[175.0,1.0,[48]],[176.0,1.0,[55,63]],[177.0,1.0,[60,63,67]],[178.0,1.0,[45]],[179.0,1.0,[54,63]],[180.0,1.0,[60,63,66]],[181.0,1.0,[46]],[182.0,1.0,[53,63]],[183.0,1.0,[58,63,68]],[184.0,1.0,[34]],[185.0,1.0,[53,62]],[186.0,1.0,[58,62,68]],[187.0,1.0,[39]],[188.0,1.0,[55,63]],[189.0,1.0,[58,67]],[190.0,1.0,[51]],[191.0,1.0,[55,63]],[192.0,1.0,[58,67]],[193.0,1.0,[46]],[194.0,1.0,[53,62]],[195.0,1.0,[58,62,65]],[196.0,1.0,[46]],[197.0,1.0,[53,62]],[198.0,1.0,[58,62,65]],[199.0,1.0,[45]],[200.0,1.0,[53,60]],[201.0,1.0,[60,65]],[202.0,1.0,[45]],[203.0,1.0,[53,60]],[204.0,1.0,[60,65]],[205.0,1.0,[44]],[206.0,1.0,[51,60]],[207.0,1.0,[56,60,63]],[208.0,1.0,[32]],[209.0,1.0,[51,59]],[210.0,1.0,[56,59,63]],[211.0,1.0,[39]],[212.0,1.0,[55,63]],[213.0,1.0,[58,63,67]],[214.0,1.0,[51]],[215.0,1.0,[55,63]],[216.0,1.0,[58,63,67]],[217.0,1.0,[40]],[218.0,1.0,[52,61]],[219.0,1.0,[58,61,67]],[220.0,1.0,[40]],[221.0,1.0,[52,60]],[222.0,1.0,[58,60,67]],[223.0,1.0,[41]],[224.0,1.0,[53,63]],[225.0,1.0,[60,63,69]],[226.0,1.0,[43]],[227.0,1.0,[55,62]],[228.0,1.0,[58,62,70]],[229.0,1.0,[36]],[230.0,1.0,[55,63]],[231.0,1.0,[60,63,67]],[232.0,1.0,[41]],[233.0,1.0,[53,63]],[234.0,1.0,[60,63,65]],[235.0,1.0,[58,62]],[236.0,1.0,[57,63]],[237.0,1.0,[56]],[238.0,1.0,[55]],[239.0,1.0,[53,60,63]],[240.0,1.0,[58,65]],[241.0,1.0,[39]],[242.0,1.0,[55,63]],[243.0,1.0,[58,63,67]],[244.0,1.0,[51]],[245.0,1.0,[56,62]],[246.0,1.0,[58,62,68]],[247.0,1.0,[51]],[248.0,1.0,[55,63]],[249.0,1.0,[58,63,67]],[250.0,1.0,[50]],[251.0,1.0,[55,63]],[252.0,1.0,[58,63,67]],[253.0,1.0,[48]],[254.0,1.0,[55,64]],[255.0,1.0,[58,64,67]],[256.0,1.0,[48]],[257.0,1.0,[55,64]],[258.0,1.0,[60,64,70]],[259.0,1.0,[41]],[260.0,1.0,[53,58,61]],[261.0,1.0,[58,61,64]],[262.0,1.0,[41]],[263.0,1.0,[53,60]],[264.0,1.0,[56,60,65]],[265.0,1.0,[46]],[266.0,1.0,[53,62]],[267.0,1.0,[58,62,68]],[268.0,1.0,[47]],[269.0,1.0,[55,65]],[270.0,1.0,[62,65,67]],[271.0,1.0,[48]],[272.0,1.0,[55,63]],[273.0,1.0,[60,63,67]],[274.0,1.0,[45]],[275.0,1.0,[54,63]],[276.0,1.0,[60,63,66]],[277.0,1.0,[46]],[278.0,1.0,[53,63]],[279.0,1.0,[58,63,68]],[280.0,1.0,[34]],[281.0,1.0,[53,62]],[282.0,1.0,[58,62,68]],[283.0,1.0,[39]],[284.0,1.0,[55,63]],[285.0,1.0,[58,63,67]],[286.0,1.0,[51]],[287.0,1.0,[55,63]],[288.0,1.0,[58,63,67]],[289.0,1.0,[39]],[290.0,1.0,[56,59,63]],[291.0,1.0,[59,63,68]],[292.0,1.0,[51]],[293.0,1.0,[56,59,63]],[294.0,1.0,[59,63,68]],[295.0,1.0,[39]],[296.0,1.0,[55,63]],[297.0,1.0,[58,63,67]],[298.0,1.0,[51]],[299.0,1.0,[55,63]],[300.0,1.0,[58,63,67]],[301.0,1.0,[39]],[302.0,1.0,[56,59,63]],[303.0,1.0,[59,63,68]],[304.0,1.0,[51]],[305.0,1.0,[56,59,63]],[306.0,1.0,[59,63,68]],[307.0,1.0,[39]],[308.0,1.0,[55,58,63]],[309.0,1.0,[58,63,67]],[310.0,1.0,[51]],[311.0,1.0,[55,63]],[312.0,1.0,[58,63,67]],[313.0,1.0,[51]],[314.0,1.0,[53,62]],[315.0,1.0,[58,68]],[316.0,1.0,[51]],[317.0,1.0,[53,62]],[318.0,1.0,[58,68]],[319.0,1.0,[51]],[320.0,1.0,[55,63]],[321.0,1.0,[58,67]],[322.0,1.0,[45]],[323.0,1.0,[53,63]],[324.0,1.0,[60,63,65]],[325.0,1.0,[46]],[326.0,1.0,[53,63]],[327.0,1.0,[58,63,68]],[328.0,1.0,[34]],[329.0,1.0,[53,62]],[330.0,1.0,[58,62,68]],[331.0,1.0,[39]],[332.0,1.0,[55,63]],[333.0,1.0,[58,63,67]],[334.0,1.0,[51]],[335.0,1.0,[55,63]],[336.0,1.0,[58,63,67]],[337.0,1.0,[32]],[338.0,1.0,[51,56,59]],[339.0,1.0,[56,59,63]],[340.0,1.0,[59,63,68]],[341.0,1.0,[56,59,63]],[342.0,1.0,[51,56,59]],[343.0,1.0,[39]],[344.0,1.0,[55,63]],[345.0,1.0,[58,63,67]],[346.0,1.0,[51]],[347.0,1.0,[55,63]],[348.0,1.0,[58,63,67]],[349.0,1.0,[32]],[350.0,1.0,[51,56,59]],[351.0,1.0,[56,59,63]],[352.0,1.0,[51,56,59]],[353.0,1.0,[56,59,63]],[354.0,1.0,[51,56,59]],[355.0,1.0,[39]],[356.0,1.0,[55,63]],[357.0,1.0,[58,63,67]],[358.0,1.0,[45]],[359.0,1.0,[53,63]],[360.0,1.0,[59,63,65]],[361.0,1.0,[46]],[362.0,1.0,[53,58,63]],[363.0,1.0,[58,63,68]],[364.0,1.0,[47]],[365.0,1.0,[55,65]],[366.0,1.0,[62,65,67]],[367.0,1.0,[48]],[368.0,1.0,[55,63]],[369.0,1.0,[60,67]],[370.0,1.0,[45]],[371.0,1.0,[60,63]],[372.0,1.0,[60,63,65]],[373.0,1.0,[34]],[374.0,1.0,[46]],[375.0,1.0,[53]],[376.0,1.0,[56]],[377.0,1.0,[62]],[378.0,1.0,[58]],[379.0,1.0,[65]],[380.0,1.0,[68]],[381.0,6.0,[74]],[421.0,1,[39]],[422.0,2,[58]],[424.0,1,[39]],[425.0,2,[58]],[427.0,1,[39]],[428.0,2,[58]],[430.0,1,[39]],[431.0,2,[58]],[433.0,12,[39,46,55,58,63]]],"end":445.0};
+
+/* ---------- music helpers ---------- */
+const CH = {
+  'E♭': ['E♭','G','B♭'], 'D°7': ['D','F','A♭','C♭'], 'C7': ['C','E','G','B♭'], 'E°7': ['E','G','B♭','D♭'],
+  'Fm': ['F','A♭','C'], 'B♭7': ['B♭','D','F','A♭'], 'G7': ['G','B','D','F'], 'Cm': ['C','E♭','G'],
+  'A°7': ['A','C','E♭','G♭'], 'B♭': ['B♭','D','F'], 'F': ['F','A','C'], 'A♭': ['A♭','C','E♭'],
+  'A♭m': ['A♭','C♭','E♭'], 'F7': ['F','A','C','E♭'], 'Gm': ['G','B♭','D'], 'B7': ['B','D♯','F♯','A'],
+  'E': ['E','G♯','B'], 'B♭7sus': ['B♭','E♭','F','A♭'],
+};
+const LET = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const pcOf = n => (LET[n[0]] + (n.includes('♭') ? -1 : 0) + (n.includes('♯') ? 1 : 0) + 12) % 12;
+const FLATS = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+const SECTIONS = [
+  { id: 'A',    from: 1,  to: 4,  what: 'The theme. Home (E♭), a quick tense lean (D°7) and back; then via C7 toward F minor, and a chain of dominants back to B♭7 → E♭.' },
+  { id: 'A′',   from: 5,  to: 8,  what: 'Exactly the same chords. Only the melody is decorated.' },
+  { id: 'B',    from: 9,  to: 12, what: 'Starts on B♭, A♭ turns to A♭ minor for a moment of shadow, then bar 12 slides home with one chord per eighth note.' },
+  { id: 'A″',   from: 13, to: 16, what: 'The theme again. Bar 13 has B♭7 on beat 2 instead of D°7.' },
+  { id: 'B′',   from: 17, to: 20, what: 'Same chords as B, bar for bar.' },
+  { id: 'A‴',   from: 21, to: 24, what: 'Last time through the theme, same as bars 13–16.' },
+  { id: 'C',    from: 25, to: 28, what: 'A♭ minor and E♭ take turns. Bar 28 closes with B♭7sus → B♭7 → E♭.' },
+  { id: 'C′',   from: 29, to: 31, what: 'The build-up. Bar 31 starts like bar 28 but swerves to G7, C minor and F7 instead of resolving.' },
+  { id: 'Coda', from: 32, to: 34, what: 'One chord under the whole cadenza: hold B♭7, let the run circle, then resolve to E♭ and let it ring.' },
+];
+const secOf = n => SECTIONS.find(s => n >= s.from && n <= s.to);
+
+function voicing(sym) {
+  const tones = CH[sym].map(pcOf), root = tones[0];
+  const bass = 36 + root;                      // C2–B2
+  const upper = [48 + root];                   // root position from C3–B3
+  for (let i = 1; i < tones.length; i++) {
+    let m = upper[upper.length - 1] + 1;
+    while (m % 12 !== tones[i]) m++;
+    upper.push(m);
+  }
+  return { bass, upper };
+}
+
+/* flat list of chords with absolute times */
+const CHORDS = [];
+D.bars.forEach(b => b.chords.forEach(([s, r, off, d], i) => CHORDS.push({ s, r, t: b.start + off, d, bar: b.n, i })));
+const barAt = p => { let b = D.bars[0]; for (const x of D.bars) if (x.start <= p + 1e-6) b = x; return b; };
+function chordIndexAt(p) { let k = 0; for (let i = 0; i < CHORDS.length; i++) if (CHORDS[i].t <= p + 1e-6) k = i; return k; }
+
+/* ---------- audio ---------- */
+let ac = null, master, buses = {}, voices = new Set();
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+  master = ac.createGain(); master.gain.value = 0.9;
+  const rev = ac.createConvolver(); rev.buffer = impulse(2.6);
+  const wet = ac.createGain(); wet.gain.value = 0.28;
+  master.connect(comp); master.connect(rev); rev.connect(wet); wet.connect(comp); comp.connect(ac.destination);
+  for (const k of ['mel', 'acc', 'ui']) { buses[k] = ac.createGain(); buses[k].connect(master); }
+  applyMutes();
+  const amps = [1, .62, .32, .2, .12, .07, .045, .03];
+  waves.bright = ac.createPeriodicWave(new Float32Array([0, ...amps]), new Float32Array(amps.length + 1));
+  waves.soft = ac.createPeriodicWave(new Float32Array([0, 1, .35, .12, .05]), new Float32Array(5));
+  waves.warm = ac.createPeriodicWave(new Float32Array([0, 1, .42, .16, .07, .03, .015]), new Float32Array(7));
+  waves.felt = ac.createPeriodicWave(new Float32Array([0, 1, .22, .05, .015]), new Float32Array(5));
+  waves.sine = ac.createPeriodicWave(new Float32Array([0, 1, .06]), new Float32Array(3));
+}
+/* Sound presets. "piano" is used for the chords; the melody uses whichever the viewer picks. */
+const TONES = {
+  bright: { w1: m => m < 84 ? 'bright' : 'soft', w2: 'soft', mix: .35, det: 4, atk: .006, cut0: f => Math.min(f * 9 + 1800, 14000), cut1: f => Math.max(f * 2.2, 500), sus: 1, vel: 1 },
+  warm:   { w1: () => 'warm', w2: 'felt', mix: .5, det: 6, atk: .012, cut0: f => Math.min(f * 4 + 700, 5000), cut1: f => Math.max(f * 1.6, 450), sus: 1.25, vel: .9 },
+  felt:   { w1: () => 'felt', w2: 'sine', mix: .6, det: -7, atk: .025, cut0: f => Math.min(f * 2.5 + 300, 2800), cut1: f => Math.max(f * 1.3, 380), sus: 1.4, vel: 1 },
+};
+TONES.piano = TONES.bright;
+let melTone = 'warm';
+const waves = {};
+function impulse(sec) {
+  const len = ac.sampleRate * sec, buf = ac.createBuffer(2, len, ac.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+  return buf;
+}
+function playNote(m, when, dur, vel, bus) {
+  const f = 440 * Math.pow(2, (m - 69) / 12);
+  const g = ac.createGain(), lp = ac.createBiquadFilter();
+  const P = TONES[bus === 'mel' ? melTone : 'piano'];
+  lp.type = 'lowpass'; lp.Q.value = 0.3;
+  const o1 = ac.createOscillator(), o2 = ac.createOscillator();
+  o1.setPeriodicWave(waves[P.w1(m)]); o2.setPeriodicWave(waves[P.w2]);
+  o1.frequency.value = f; o2.frequency.value = f; o2.detune.value = P.det;
+  const o2g = ac.createGain(); o2g.gain.value = P.mix;
+  o1.connect(lp); o2.connect(o2g); o2g.connect(lp); lp.connect(g); g.connect(buses[bus]);
+  const tau = Math.max(0.5, Math.min(3.2, 3.6 - (m - 30) * 0.045)) * P.sus;
+  const v = vel * P.vel * (m < 48 ? 1.15 : 1);
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(v, when + P.atk);
+  g.gain.setTargetAtTime(v * 0.0001, when + P.atk, tau);
+  lp.frequency.setValueAtTime(P.cut0(f), when);
+  lp.frequency.setTargetAtTime(P.cut1(f), when + 0.01, tau * 0.5);
+  const end = when + Math.max(dur, 0.08);
+  g.gain.setTargetAtTime(0, end, 0.09);
+  o1.start(when); o2.start(when); o1.stop(end + 0.7); o2.stop(end + 0.7);
+  const vo = { g, o1, o2 }; voices.add(vo);
+  o1.onended = () => voices.delete(vo);
+}
+function silence() {
+  if (!ac) return;
+  const now = ac.currentTime;
+  for (const v of voices) { try { v.g.gain.cancelScheduledValues(now); v.g.gain.setTargetAtTime(0, now, 0.03); v.o1.stop(now + 0.2); v.o2.stop(now + 0.2); } catch (e) {} }
+  voices.clear();
+}
+
+/* ---------- events ---------- */
+const $ = id => document.getElementById(id);
+let accEvents = [], melEvents = [], events = [];
+function buildEvents() {
+  melEvents = [];
+  for (const [t, d, ms] of D.rh) {
+    const top = Math.max(...ms);
+    for (const m of ms) melEvents.push({ t, d, m, vel: m === top ? 0.26 : 0.15, bus: 'mel', sd: d * 1.05 });
+  }
+  const style = $('style').value;
+  accEvents = [];
+  const pushOrig = (from, to) => {
+    for (const [t, d, ms] of D.lh) {
+      if (t < from - 1e-6 || t >= to - 1e-6) continue;
+      const b = barAt(t), rel = t - b.start;
+      let sus = b.n === 32 ? Math.max(d, 14 - rel) : Math.max(d, Math.ceil((rel + 0.01) / 3) * 3 - rel);
+      ms.forEach((m, i) => accEvents.push({ t, d, m, vel: ms.length === 1 ? 0.2 : 0.11, bus: 'acc', sd: sus, bass: ms.length === 1 }));
+    }
+  };
+  if (style === 'orig') pushOrig(0, D.end);
+  else for (const c of CHORDS) {
+    const { bass, upper } = voicing(c.s);
+    const b = D.bars[c.bar - 1];
+    if (style === 'pattern' && b.n === 32) { pushOrig(b.start, b.start + b.len); continue; }
+    if (style === 'block' || c.d < 3 || b.n >= 33 && style === 'pattern' && false) {
+      accEvents.push({ t: c.t, d: c.d, m: bass, vel: 0.2, bus: 'acc', sd: c.d, bass: true });
+      upper.forEach(m => accEvents.push({ t: c.t, d: c.d, m, vel: 0.11, bus: 'acc', sd: c.d }));
+    } else {
+      for (let e = c.t; e < c.t + c.d - 1e-6; e += 1) {
+        const k = Math.round(e - b.start) % 3, rest = c.t + c.d - e;
+        if (k === 0) accEvents.push({ t: e, d: 1, m: bass, vel: 0.2, bus: 'acc', sd: Math.min(rest, 3), bass: true });
+        else upper.forEach(m => accEvents.push({ t: e, d: 1, m, vel: 0.095, bus: 'acc', sd: Math.min(rest, 2) }));
+      }
+    }
+  }
+  events = melEvents.concat(accEvents).sort((a, b) => a.t - b.t);
+}
+
+/* ---------- transport ---------- */
+let playing = false, pos = 0, anchorCtx = 0, anchorPos = 0, schedPos = 0, evIdx = 0, timer = null;
+const spe = () => 60 / +$('tempo').value;     // seconds per eighth note
+function curPos() { return playing ? anchorPos + (ac.currentTime - anchorCtx) / spe() : pos; }
+function loopRange() {
+  const mode = $('loopMode').value;
+  if (mode === 'off') return null;
+  const b = barAt(Math.max(pos, 1));
+  if (mode === 'bar') return [b.start, b.start + b.len];
+  if (mode === 'section') { const s = secOf(b.n); return [D.bars[s.from - 1].start, D.bars[s.to - 1].start + D.bars[s.to - 1].len]; }
+  let f = Math.min(34, Math.max(1, +$('loopFrom').value || 1)), t = Math.min(34, Math.max(f, +$('loopTo').value || f));
+  return [D.bars[f - 1].start, D.bars[t - 1].start + D.bars[t - 1].len];
+}
+let loop = null;
+function seekIdx(p) { evIdx = 0; while (evIdx < events.length && events[evIdx].t < p - 1e-6) evIdx++; }
+function anchor(p) { anchorCtx = ac.currentTime + 0.05; anchorPos = p; schedPos = p; seekIdx(p); }
+function tick() {
+  const horizon = anchorPos + (ac.currentTime + 0.15 - anchorCtx) / spe();
+  let guard = 0;
+  while (schedPos < horizon && guard++ < 4) {
+    const stop = loop ? Math.min(horizon, loop[1]) : Math.min(horizon, D.end);
+    while (evIdx < events.length && events[evIdx].t < stop - 1e-6) {
+      const e = events[evIdx++];
+      if (e.t >= schedPos - 1e-6) playNote(e.m, anchorCtx + (e.t - anchorPos) * spe(), e.sd * spe(), e.vel, e.bus);
+    }
+    schedPos = stop;
+    if (loop && horizon >= loop[1]) {
+      anchorCtx = anchorCtx + (loop[1] - anchorPos) * spe(); anchorPos = loop[0]; schedPos = loop[0]; seekIdx(loop[0]);
+    } else if (!loop && schedPos >= D.end) {
+      if (ac.currentTime > anchorCtx + (D.end - anchorPos) * spe() + 1.5) { pause(); setPos(0); }
+      break;
+    }
+  }
+}
+function play() {
+  initAudio(); ac.resume();
+  if (pos >= D.end - 0.01) pos = 0;
+  loop = loopRange();
+  if (loop && (pos < loop[0] || pos >= loop[1])) pos = loop[0];
+  playing = true; anchor(pos);
+  timer = setInterval(tick, 25); tick();
+  $('playBtn').textContent = '❚❚ Pause';
+}
+function pause() {
+  if (!playing) return;
+  pos = Math.min(curPos(), D.end); playing = false; clearInterval(timer); silence();
+  $('playBtn').textContent = '▶ Play';
+}
+function setPos(p) {
+  p = Math.max(0, Math.min(p, D.end));
+  if (playing) { silence(); pos = p; loop = loopRange(); if (loop && (p < loop[0] || p >= loop[1])) loop = null, $('loopMode').value = 'off', syncRange(); anchor(p); }
+  else pos = p;
+  lastChord = -1;
+}
+function restartLoop() { if (playing) { const p = curPos(); silence(); pos = p; loop = loopRange(); if (loop && (p < loop[0] || p >= loop[1])) pos = loop[0]; anchor(pos); } }
+function auditionChord(sym) {
+  initAudio(); ac.resume();
+  const { bass, upper } = voicing(sym), t = ac.currentTime + 0.02;
+  playNote(bass, t, 1.6, 0.22, 'ui'); upper.forEach((m, i) => playNote(m, t + 0.03 * (i + 1), 1.6, 0.13, 'ui'));
+  flash = { notes: [bass, ...upper], until: performance.now() + 1200 };
+}
+$('melTone').onchange = () => {
+  melTone = $('melTone').value;
+  if (playing) { const p = curPos(); silence(); anchor(p); }
+  else { initAudio(); ac.resume(); [79, 77, 79, 75].forEach((m, i) => playNote(m, ac.currentTime + 0.05 + i * 0.32, 0.4, 0.26, 'mel')); }
+};
+$('melVol').oninput = applyMutes;
+function applyMutes() { if (!ac) return; buses.mel.gain.value = $('melOn').checked ? $('melVol').value / 100 : 0; buses.acc.gain.value = $('accOn').checked ? 1 : 0; }
+
+/* ---------- controls ---------- */
+$('playBtn').onclick = () => playing ? pause() : play();
+$('restartBtn').onclick = () => { setPos(0); if (!playing) play(); };
+$('prevBar').onclick = () => stepBar(-1);
+$('nextBar').onclick = () => stepBar(1);
+function stepBar(dir) {
+  const p = curPos(), b = barAt(Math.max(p, 1));
+  let n = b.n + dir;
+  if (dir < 0 && p - b.start > 2) n = b.n;
+  n = Math.max(1, Math.min(34, n));
+  setPos(D.bars[n - 1].start - (n === 1 ? 1 : 0));
+}
+$('tempo').oninput = () => { $('tempoVal').textContent = $('tempo').value; if (playing) { const p = curPos(); silence(); anchor(p); } };
+$('melOn').onchange = applyMutes; $('accOn').onchange = applyMutes;
+$('style').onchange = () => { buildEvents(); if (playing) { const p = curPos(); silence(); anchor(p); } };
+function syncRange() { $('rangeBox').hidden = $('loopMode').value !== 'range'; }
+$('loopMode').onchange = () => {
+  syncRange();
+  if ($('loopMode').value === 'range') { const b = barAt(Math.max(curPos(), 1)); $('loopFrom').value = b.n; $('loopTo').value = Math.min(34, b.n + 3); }
+  restartLoop();
+};
+$('loopFrom').onchange = restartLoop; $('loopTo').onchange = restartLoop;
+document.addEventListener('keydown', e => {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) && e.target.type !== 'checkbox' && e.target.type !== 'range') return;
+  if (e.code === 'Space') { e.preventDefault(); playing ? pause() : play(); }
+  else if (e.code === 'ArrowRight' && e.target.type !== 'range') { e.preventDefault(); stepBar(1); }
+  else if (e.code === 'ArrowLeft' && e.target.type !== 'range') { e.preventDefault(); stepBar(-1); }
+});
+
+/* ---------- chord map ---------- */
+const mapEl = $('map'), chipEls = [], barEls = [];
+for (const s of SECTIONS) {
+  const sec = document.createElement('div'); sec.className = 'section';
+  sec.innerHTML = `<div class="section-head"><h3>${s.id}</h3><span class="what">Bars ${s.from}–${s.to}. ${s.what}</span><button class="btn loopit" type="button">Repeat ${s.id}</button></div><div class="bars"></div>`;
+  sec.querySelector('.loopit').onclick = () => {
+    $('loopMode').value = 'range'; syncRange(); $('loopFrom').value = s.from; $('loopTo').value = s.to;
+    setPos(D.bars[s.from - 1].start); if (!playing) play(); else restartLoop();
+  };
+  const grid = sec.querySelector('.bars');
+  for (let n = s.from; n <= s.to; n++) {
+    const b = D.bars[n - 1];
+    const el = document.createElement('div'); el.className = 'bar' + (n === 32 ? ' wide' : '');
+    el.innerHTML = `<div class="bar-n"><span>Bar ${n}${n === 32 ? ' · cadenza, free time' : ''}</span><button type="button">play</button></div><div class="chips"></div>` +
+      (n === 32 ? '' : '<div class="beats"><span>1</span><span>2</span><span>3</span><span>4</span></div>');
+    el.querySelector('button').onclick = () => { setPos(b.start - (n === 1 ? 1 : 0)); if (!playing) play(); };
+    const chips = el.querySelector('.chips');
+    b.chords.forEach(([sym, rom, off, d]) => {
+      const c = document.createElement('button'); c.type = 'button';
+      c.className = 'chip' + (d < 3 ? ' tiny' : '');
+      c.style.flex = `${d} 1 0`;
+      c.title = `${sym} = ${CH[sym].join(' – ')}  (${rom})`;
+      c.innerHTML = `<span class="s">${sym}</span><span class="ro">${rom}</span>`;
+      c.onclick = () => { setPos(b.start + off); if (!playing) auditionChord(sym); };
+      if (d < 3) {
+        const beat = Math.floor(off / 3 + 1e-6);
+        let st = chips.querySelector(`.stack[data-b="${beat}"]`);
+        if (!st) { st = document.createElement('div'); st.className = 'stack'; st.dataset.b = beat; st.style.flex = '3 1 0'; chips.appendChild(st); }
+        st.appendChild(c);
+      } else chips.appendChild(c);
+      chipEls.push(c);
+    });
+    grid.appendChild(el); barEls.push(el);
+  }
+  mapEl.appendChild(sec);
+}
+
+/* ---------- now panel ---------- */
+const meter = $('meter');
+for (let b = 0; b < 4; b++) { const g = document.createElement('span'); g.className = 'beat'; for (let k = 0; k < 3; k++) { const i = document.createElement('i'); if (!k) i.className = 'big'; g.appendChild(i); } meter.appendChild(g); }
+const dots = [...meter.querySelectorAll('i')];
+let lastChord = -1, lastBar = -1, lastEighth = -1, curNames = {};
+const stripBars = $('stripBars'); let stripSec = null, stripChips = {}, stripBarEls = {};
+function renderStrip(s) {
+  stripSec = s; stripChips = {}; stripBarEls = {}; stripBars.innerHTML = '';
+  const nx = SECTIONS[SECTIONS.indexOf(s) + 1];
+  $('stripTitle').innerHTML = `<b>${s.id}</b> · bars ${s.from}–${s.to}`;
+  $('stripNext').textContent = nx ? `then ${nx.id} (bars ${nx.from}–${nx.to})` : 'then the end';
+  for (let n = s.from; n <= s.to; n++) {
+    const b = D.bars[n - 1], el = document.createElement('div'); el.className = 'bar';
+    el.innerHTML = `<div class="bar-n"><span>Bar ${n}${n === 32 ? ' · cadenza, free time' : ''}</span></div><div class="chips"></div>`;
+    const chips = el.querySelector('.chips');
+    let ci = CHORDS.findIndex(c => c.bar === n);
+    b.chords.forEach(([sym, rom, off, d]) => {
+      const c = document.createElement('button'); c.type = 'button';
+      c.className = 'chip' + (d < 3 ? ' tiny' : '');
+      c.style.flex = `${d} 1 0`;
+      c.title = `${sym} = ${CH[sym].join(' – ')}  (${rom})`;
+      c.innerHTML = `<span class="s">${sym}</span><span class="ro">${rom}</span>`;
+      c.onclick = () => { setPos(b.start + off); if (!playing) auditionChord(sym); };
+      if (d < 3) {
+        const beat = Math.floor(off / 3 + 1e-6);
+        let st = chips.querySelector(`.stack[data-b="${beat}"]`);
+        if (!st) { st = document.createElement('div'); st.className = 'stack'; st.dataset.b = beat; st.style.flex = '3 1 0'; chips.appendChild(st); }
+        st.appendChild(c);
+      } else chips.appendChild(c);
+      stripChips[ci++] = c;
+    });
+    stripBars.appendChild(el); stripBarEls[n] = el;
+  }
+}
+function updatePanel(p) {
+  const s0 = secOf(barAt(Math.max(p, 1)).n);
+  if (s0 !== stripSec) { renderStrip(s0); lastChord = -1; lastBar = -1; }
+  const ci = p < 1 ? 0 : chordIndexAt(p), c = CHORDS[ci];
+  if (ci !== lastChord) {
+    lastChord = ci;
+    $('nowSym').textContent = c.s; $('nowRom').textContent = c.r;
+    const names = CH[c.s]; curNames = {};
+    names.forEach(n => curNames[pcOf(n)] = n);
+    $('nowTones').innerHTML = names.map((n, i) => `<span class="tone${i ? '' : ' root'}">${n}</span>`).join('');
+    const nx = CHORDS[ci + 1];
+    $('nextChord').innerHTML = nx ? `Next: <b>${nx.s}</b> &nbsp;in bar ${nx.bar}` : 'Last chord: let it ring';
+    chipEls.forEach((el, i) => el.classList.toggle('cur', i === ci));
+    for (const k in stripChips) stripChips[k].classList.toggle('cur', +k === ci);
+  }
+  const b = barAt(Math.max(p, 1));
+  if (b.n !== lastBar) {
+    lastBar = b.n; barEls.forEach((el, i) => el.classList.toggle('cur', i === b.n - 1));
+    for (const k in stripBarEls) stripBarEls[k].classList.toggle('cur', +k === b.n);
+    if (stripBarEls[b.n]) stripBars.scrollLeft = stripBarEls[b.n].offsetLeft - 8;
+    const s = secOf(b.n); $('secTag').innerHTML = `<b>${s.id}</b> · bars ${s.from}–${s.to}`;
+  }
+  const e = p < 1 ? -1 : Math.floor(p - b.start + 1e-6);
+  const key = b.n * 100 + e;
+  if (key !== lastEighth) {
+    lastEighth = key;
+    const sub = ['', '-and', '-a'];
+    if (p < 1) $('posText').innerHTML = 'Pickup note';
+    else if (b.n === 32) $('posText').innerHTML = `<b>Bar 32</b> · cadenza`;
+    else $('posText').innerHTML = `<b>Bar ${b.n}</b> · beat ${Math.floor(e / 3) + 1}${sub[e % 3]}`;
+    dots.forEach((d, i) => d.classList.toggle('on', b.n !== 32 && p >= 1 && i === e));
+  }
+}
+
+/* ---------- drawing ---------- */
+const LO = 33, HI = 100, roll = $('roll'), keys = $('keys');
+const isBlack = m => [1, 3, 6, 8, 10].includes(m % 12);
+let geo = null, col = {}, flash = null;
+function readColors() { const cs = getComputedStyle(document.documentElement); for (const k of ['melody','melody-soft','chord','chord-soft','bass','key-white','key-black','roll-bg','grid','line','ink','muted','surface']) col[k] = cs.getPropertyValue('--' + k).trim(); }
+function layout() {
+  const dpr = window.devicePixelRatio || 1;
+  for (const c of [roll, keys]) { const r = c.getBoundingClientRect(); c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0); }
+  const W = roll.getBoundingClientRect().width, whites = [];
+  for (let m = LO; m <= HI; m++) if (!isBlack(m)) whites.push(m);
+  const ww = W / whites.length, x = {};
+  whites.forEach((m, i) => x[m] = { x: i * ww, w: ww, black: false });
+  for (let m = LO; m <= HI; m++) if (isBlack(m)) x[m] = { x: x[m - 1].x + ww - ww * 0.31, w: ww * 0.62, black: true };
+  geo = { W, ww, x, RH: roll.getBoundingClientRect().height, KH: keys.getBoundingClientRect().height };
+}
+function rr(ctx, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+const LOOK = 12;   // eighth notes visible above the keys
+function draw() {
+  const p = curPos();
+  if (playing) pos = Math.min(p, D.end);
+  updatePanel(p);
+  const { W, x, RH, KH } = geo, ctx = roll.getContext('2d'), k = keys.getContext('2d');
+  const ppe = RH / LOOK;
+  ctx.fillStyle = col['roll-bg']; ctx.fillRect(0, 0, W, RH);
+  // octave guides + bar lines
+  ctx.fillStyle = col.grid;
+  for (let m = LO; m <= HI; m++) if (m % 12 === 0) ctx.fillRect(x[m].x, 0, 1, RH);
+  for (const b of D.bars) for (let e = 0; e <= b.len; e += 3) {
+    const y = RH - (b.start + e - p) * ppe; if (y < 0 || y > RH) continue;
+    ctx.fillStyle = col.grid; ctx.fillRect(0, y, W, e === 0 ? 2 : 1);
+    if (e === 0) { ctx.fillStyle = col.muted; ctx.font = '11px ' + getComputedStyle(document.body).fontFamily; ctx.fillText('Bar ' + b.n, 6, y - 4); }
+  }
+  const active = {};
+  const accOn = $('accOn').checked, melOn = $('melOn').checked;
+  for (const e of events) {
+    if (e.t > p + LOOK) break;
+    if (e.t + e.d < p) continue;
+    if (e.bus === 'acc' && !accOn || e.bus === 'mel' && !melOn) continue;
+    const g = x[e.m]; if (!g) continue;
+    const y1 = RH - (e.t - p) * ppe, y0 = RH - (e.t + e.d - p) * ppe;
+    const c = e.bus === 'mel' ? col.melody : e.bass ? col.bass : col.chord;
+    ctx.fillStyle = c; rr(ctx, g.x + 1.5, y0 + 1, g.w - 3, Math.max(4, y1 - y0 - 2), 4); ctx.fill();
+    if (e.t <= p + 1e-6 && p < e.t + e.d) active[e.m] = c;
+  }
+  if (flash && performance.now() < flash.until) flash.notes.forEach(m => active[m] = active[m] || col.chord);
+  // keys
+  k.fillStyle = col.line; k.fillRect(0, 0, W, KH);
+  const chordPcs = new Set(Object.keys(curNames).map(Number));
+  for (let pass = 0; pass < 2; pass++) for (let m = LO; m <= HI; m++) {
+    const g = x[m]; if (g.black !== !!pass) continue;
+    const h = g.black ? KH * 0.62 : KH;
+    k.fillStyle = active[m] || (g.black ? col['key-black'] : col['key-white']);
+    rr(k, g.x + 0.5, -4, g.w - 1, h + 4 - 1, 3); k.fill();
+    if (!active[m] && chordPcs.has(m % 12)) {
+      k.strokeStyle = col.chord; k.lineWidth = 2; rr(k, g.x + 2, h - (g.black ? 18 : 22), g.w - 4, g.black ? 14 : 18, 3); k.stroke();
+    }
+    if (active[m]) {
+      const nm = curNames[m % 12] || FLATS[m % 12];
+      k.fillStyle = g.black ? col['key-black'] : col['key-white'];
+      k.font = `600 ${Math.max(9, Math.min(12, g.w * 0.55))}px ` + getComputedStyle(document.body).fontFamily;
+      k.textAlign = 'center'; k.fillText(nm, g.x + g.w / 2, h - 8); k.textAlign = 'left';
+    } else if (m % 12 === 0 && !g.black) {
+      k.fillStyle = col.muted; k.font = '10px ' + getComputedStyle(document.body).fontFamily; k.textAlign = 'center'; k.fillText('C' + (m / 12 - 1), g.x + g.w / 2, KH - 6); k.textAlign = 'left';
+    }
+  }
+  // hit line
+  ctx.fillStyle = col.melody; ctx.globalAlpha = 0.5; ctx.fillRect(0, RH - 2, W, 2); ctx.globalAlpha = 1;
+  requestAnimationFrame(draw);
+}
+keys.addEventListener('pointerdown', ev => {
+  const r = keys.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top;
+  let hit = null;
+  for (let m = LO; m <= HI; m++) { const g = geo.x[m]; if (g.black && py < geo.KH * 0.62 && px >= g.x && px < g.x + g.w) hit = m; }
+  if (hit == null) for (let m = LO; m <= HI; m++) { const g = geo.x[m]; if (!g.black && px >= g.x && px < g.x + g.w) hit = m; }
+  if (hit == null) return;
+  initAudio(); ac.resume(); playNote(hit, ac.currentTime + 0.01, 0.9, 0.25, 'ui');
+  flash = { notes: [hit], until: performance.now() + 500 };
+});
+
+readColors(); layout(); buildEvents();
+window.addEventListener('resize', () => { layout(); });
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors); } catch (e) {}
+new MutationObserver(readColors).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+// keep the middle of the keyboard in view on narrow screens
+requestAnimationFrame(() => { const sc = $('pianoScroll'); sc.scrollLeft = (sc.scrollWidth - sc.clientWidth) * 0.55; });
+requestAnimationFrame(draw);
+</script>
