@@ -1,5 +1,5 @@
 const SONG = window.SONG, D = SONG.data, CH = SONG.chords, SECTIONS = SONG.sections;
-const PICK = D.pickup, CAD = D.cadenza, NB = D.bars.length, BEATS = D.beats, BARLEN = BEATS * 3;
+const PICK = D.pickup, CAD = D.cadenza, NB = D.bars.length, BEATS = D.beats, BL = D.bl || 3, BARLEN = BEATS * BL, BEAMLEN = D.beam || BL;
 const tonesOf = sym => CH[sym.split("/")[0]];
 const BEATS_HTML = '<div class="beats">' + Array.from({ length: BEATS }, (_, i) => `<span>${i + 1}</span>`).join('') + '</div>';
 
@@ -114,7 +114,7 @@ function buildEvents() {
     for (const [t, d, ms] of D.lh) {
       if (t < from - 1e-6 || t >= to - 1e-6) continue;
       const b = barAt(t), rel = t - b.start;
-      let sus = b.n === CAD ? Math.max(d, 14 - rel) : Math.max(d, Math.ceil((rel + 0.01) / 3) * 3 - rel);
+      let sus = b.n === CAD ? Math.max(d, 14 - rel) : Math.max(d, Math.ceil((rel + 0.01) / BL) * BL - rel);
       ms.forEach((m, i) => accEvents.push({ t, d, m, vel: ms.length === 1 ? 0.2 : 0.11, bus: 'acc', sd: sus, bass: ms.length === 1 }));
     }
   };
@@ -123,14 +123,15 @@ function buildEvents() {
     const { bass, upper } = voicing(c.s);
     const b = D.bars[c.bar - 1];
     if (style === 'pattern' && b.n === CAD) { pushOrig(b.start, b.start + b.len); continue; }
-    if (style === 'block' || c.d < 3 || b.n >= 33 && style === 'pattern' && false) {
+    if (style === 'block' || c.d < Math.min(BL, 3) || b.n >= 33 && style === 'pattern' && false) {
       accEvents.push({ t: c.t, d: c.d, m: bass, vel: 0.2, bus: 'acc', sd: c.d, bass: true });
       upper.forEach(m => accEvents.push({ t: c.t, d: c.d, m, vel: 0.11, bus: 'acc', sd: c.d }));
     } else {
-      for (let e = c.t; e < c.t + c.d - 1e-6; e += 1) {
-        const k = Math.round(e - b.start) % 3, rest = c.t + c.d - e;
-        if (k === 0) accEvents.push({ t: e, d: 1, m: bass, vel: 0.2, bus: 'acc', sd: Math.min(rest, 3), bass: true });
-        else upper.forEach(m => accEvents.push({ t: e, d: 1, m, vel: 0.095, bus: 'acc', sd: Math.min(rest, 2) }));
+      const step = BL === 3 ? 1 : BL, bassUnit = BL === 3 ? 3 : (BEATS === 4 ? 2 * BL : BARLEN);
+      for (let e = c.t; e < c.t + c.d - 1e-6; e += step) {
+        const k = Math.round(e - b.start) % bassUnit, rest = c.t + c.d - e;
+        if (k === 0) accEvents.push({ t: e, d: step, m: bass, vel: 0.2, bus: 'acc', sd: Math.min(rest, bassUnit), bass: true });
+        else upper.forEach(m => accEvents.push({ t: e, d: step, m, vel: 0.095, bus: 'acc', sd: Math.min(rest, Math.max(2, step)) }));
       }
     }
   }
@@ -254,15 +255,15 @@ for (const s of SECTIONS) {
     const chips = el.querySelector('.chips');
     b.chords.forEach(([sym, rom, off, d]) => {
       const c = document.createElement('button'); c.type = 'button';
-      c.className = 'chip' + (d < 3 ? ' tiny' : '');
+      c.className = 'chip' + (d < Math.min(BL, 3) ? ' tiny' : '');
       c.style.flex = `${d} 1 0`;
       c.title = `${sym} = ${tonesOf(sym).join(' – ')}  (${rom})`;
       c.innerHTML = `<span class="s">${sym.replace('/', '/<wbr>')}</span><span class="ro">${rom}</span>`;
       c.onclick = () => { setPos(b.start + off); if (!playing) auditionChord(sym); };
-      if (d < 3) {
-        const beat = Math.floor(off / 3 + 1e-6);
+      if (d < Math.min(BL, 3)) {
+        const beat = Math.floor(off / BL + 1e-6);
         let st = chips.querySelector(`.stack[data-b="${beat}"]`);
-        if (!st) { st = document.createElement('div'); st.className = 'stack'; st.dataset.b = beat; st.style.flex = '3 1 0'; chips.appendChild(st); }
+        if (!st) { st = document.createElement('div'); st.className = 'stack'; st.dataset.b = beat; st.style.flex = BL + ' 1 0'; chips.appendChild(st); }
         st.appendChild(c);
       } else chips.appendChild(c);
       chipEls.push(c);
@@ -274,7 +275,7 @@ for (const s of SECTIONS) {
 
 /* ---------- now panel ---------- */
 const meter = $('meter');
-for (let b = 0; b < BEATS; b++) { const g = document.createElement('span'); g.className = 'beat'; for (let k = 0; k < 3; k++) { const i = document.createElement('i'); if (!k) i.className = 'big'; g.appendChild(i); } meter.appendChild(g); }
+for (let b = 0; b < BEATS; b++) { const g = document.createElement('span'); g.className = 'beat'; for (let k = 0; k < BL; k++) { const i = document.createElement('i'); if (!k) i.className = 'big'; g.appendChild(i); } meter.appendChild(g); }
 const dots = [...meter.querySelectorAll('i')];
 let lastChord = -1, lastBar = -1, lastEighth = -1, curNames = {};
 const stripBars = $('stripBars'); let stripSec = null, stripChips = {}, stripBarEls = {};
@@ -290,15 +291,15 @@ function renderStrip(s, w) {
     let ci = CHORDS.findIndex(c => c.bar === n);
     b.chords.forEach(([sym, rom, off, d]) => {
       const c = document.createElement('button'); c.type = 'button';
-      c.className = 'chip' + (d < 3 ? ' tiny' : '');
+      c.className = 'chip' + (d < Math.min(BL, 3) ? ' tiny' : '');
       c.style.flex = `${d} 1 0`;
       c.title = `${sym} = ${tonesOf(sym).join(' – ')}  (${rom})`;
       c.innerHTML = `<span class="s">${sym.replace('/', '/<wbr>')}</span><span class="ro">${rom}</span>`;
       c.onclick = () => { setPos(b.start + off); if (!playing) auditionChord(sym); };
-      if (d < 3) {
-        const beat = Math.floor(off / 3 + 1e-6);
+      if (d < Math.min(BL, 3)) {
+        const beat = Math.floor(off / BL + 1e-6);
         let st = chips.querySelector(`.stack[data-b="${beat}"]`);
-        if (!st) { st = document.createElement('div'); st.className = 'stack'; st.dataset.b = beat; st.style.flex = '3 1 0'; chips.appendChild(st); }
+        if (!st) { st = document.createElement('div'); st.className = 'stack'; st.dataset.b = beat; st.style.flex = BL + ' 1 0'; chips.appendChild(st); }
         st.appendChild(c);
       } else chips.appendChild(c);
       stripChips[ci++] = c;
@@ -332,16 +333,16 @@ function updatePanel(p) {
   const key = b.n * 100 + e;
   if (key !== lastEighth) {
     lastEighth = key;
-    const sub = ['', '-and', '-a'];
+    const sub = BL === 3 ? ['', '-and', '-a'] : BL === 2 ? ['', '-and'] : BL === 4 ? ['', '-e', '-and', '-a'] : [''];
     if (p < PICK) $('posText').innerHTML = 'Pickup note';
     else if (b.n === CAD) $('posText').innerHTML = `<b>Bar 32</b> · cadenza`;
-    else $('posText').innerHTML = `<b>Bar ${b.n}</b> · beat ${Math.floor(e / 3) + 1}${sub[e % 3]}`;
+    else $('posText').innerHTML = `<b>Bar ${b.n}</b> · beat ${Math.floor(e / BL) + 1}${sub[e % BL] || ''}`;
     dots.forEach((d, i) => d.classList.toggle('on', b.n !== CAD && p >= 1 && i === e));
   }
 }
 
 /* ---------- drawing ---------- */
-const LO = D.lo, HI = 100, roll = $('roll'), keys = $('keys');
+const LO = D.lo, HI = D.hi || 100, roll = $('roll'), keys = $('keys');
 const isBlack = m => [1, 3, 6, 8, 10].includes(m % 12);
 let geo = null, col = {}, flash = null;
 function readColors() { const cs = getComputedStyle(document.documentElement); for (const k of ['melody','melody-soft','chord','chord-soft','bass','key-white','key-black','roll-bg','grid','line','ink','muted','surface']) col[k] = cs.getPropertyValue('--' + k).trim(); }
@@ -367,7 +368,7 @@ function draw() {
   // octave guides + bar lines
   ctx.fillStyle = col.grid;
   for (let m = LO; m <= HI; m++) if (m % 12 === 0) ctx.fillRect(x[m].x, 0, 1, RH);
-  for (const b of D.bars) for (let e = 0; e <= b.len; e += 3) {
+  for (const b of D.bars) for (let e = 0; e <= b.len; e += BL) {
     const y = RH - (b.start + e - p) * ppe; if (y < 0 || y > RH) continue;
     ctx.fillStyle = col.grid; ctx.fillRect(0, y, W, e === 0 ? 2 : 1);
     if (e === 0) { ctx.fillStyle = col.muted; ctx.font = '11px ' + getComputedStyle(document.body).fontFamily; ctx.fillText('Bar ' + b.n, 6, y - 4); }
@@ -421,6 +422,7 @@ keys.addEventListener('pointerdown', ev => {
 });
 
 
+const SH = d => d <= 0.76 && Math.abs(d - 2 / 3) > 0.03;   // shorter than an eighth (but not a triplet eighth)
 /* ---------- sheet music (simplified engraving drawn on a canvas) ---------- */
 const sheetC = $('sheet');
 const SP = 7, Y_T = 48, Y_B = Y_T + 4 * SP + 46, PPE = 26, LEFT = 86;
@@ -458,7 +460,7 @@ const SG = [], BEAMS = [];
   for (const g of SG) {
     if (g.d > 1.5 + 1e-6) continue;
     const key = g.v + '|' + g.st, p = last[key];
-    if (p && Math.abs(p.t + p.d - g.t) < 1e-6 && Math.floor((p.t - PICK) / 3 + 1e-6) === Math.floor((g.t - PICK) / 3 + 1e-6)) {
+    if (p && Math.abs(p.t + p.d - g.t) < 1e-6 && Math.floor((p.t - PICK) / BEAMLEN + 1e-6) === Math.floor((g.t - PICK) / BEAMLEN + 1e-6)) {
       if (!p.beam) { p.beam = { gs: [p] }; BEAMS.push(p.beam); }
       g.beam = p.beam; g.beam.gs.push(g);
     }
@@ -539,7 +541,7 @@ function drawSheet(p) {
     const sx = g.up ? x + rx - 0.6 : x - rx + 0.6, ye = Y(g.st, stemEnd(g));
     c.beginPath(); c.moveTo(sx, Y(g.st, g.up ? g.lo : g.hi)); c.lineTo(sx, ye); c.stroke();
     if (!g.beam && g.d <= 1.5 + 1e-6) {   // flags
-      const nf = g.d <= 0.75 + 1e-6 ? 2 : 1, dir = g.up ? 1 : -1;
+      const nf = SH(g.d) ? 2 : 1, dir = g.up ? 1 : -1;
       c.lineWidth = 1.6; c.beginPath();
       for (let f = 0; f < nf; f++) { c.moveTo(sx, ye + dir * f * 4.5); c.quadraticCurveTo(sx + 7, ye + dir * (f * 4.5 + 5), sx + 5, ye + dir * (f * 4.5 + 11)); }
       c.stroke(); c.lineWidth = 1.1;
@@ -554,10 +556,10 @@ function drawSheet(p) {
     const seg = (ta, tb, lvl) => { const ya = Y(st, b.at(ta)) + lvl * th * 1.6, yb = Y(st, b.at(tb)) + lvl * th * 1.6; c.beginPath(); c.moveTo(X(ta) + off, ya); c.lineTo(X(tb) + off, yb); c.lineTo(X(tb) + off, yb + th); c.lineTo(X(ta) + off, ya + th); c.closePath(); c.fill(); };
     seg(b.t0, b.t1, 0);
     for (let i = 0; i < b.gs.length; i++) {
-      const g = b.gs[i]; if (g.d > 0.75 + 1e-6) continue;
+      const g = b.gs[i]; if (!SH(g.d)) continue;
       const nx = b.gs[i + 1], pv = b.gs[i - 1];
-      if (nx && nx.d <= 0.75 + 1e-6) seg(g.t, nx.t, 1);
-      else if (!pv || pv.d > 0.75 + 1e-6) { const dt = 0.3 * (nx ? 1 : -1); seg(Math.min(g.t, g.t + dt), Math.max(g.t, g.t + dt), 1); }
+      if (nx && SH(nx.d)) seg(g.t, nx.t, 1);
+      else if (!pv || !SH(pv.d)) { const dt = 0.3 * (nx ? 1 : -1); seg(Math.min(g.t, g.t + dt), Math.max(g.t, g.t + dt), 1); }
     }
   }
   // fixed left panel: clefs and key signature for what is at the left edge

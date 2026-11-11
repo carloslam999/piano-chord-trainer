@@ -131,6 +131,8 @@ SONGS = [
          countText='three beats, each three eighth notes long (count “1-and-a, 2-and-a, 3-and-a”)',
          desc="Play-along chord trainer for Debussy's Clair de Lune."),
 ]
+exec(open(f'{SP}/songs_extra.py').read())
+
 def song_js(s):
     meta = dict(id=s['id'], title=s['title'], eyebrow=s['texts']['eyebrow'], titleHtml=s['texts']['title'], metaHtml=s['texts']['meta'],
                 practiceHtml=s['texts']['practice'], glossaryHtml=s['texts']['glossary'], creditsHtml=s['texts']['credits'] + f' <br>Spotted a wrong chord or want another piece? <a href="{ISSUES}" target="_blank" rel="noopener">Tell me on GitHub</a>.',
@@ -164,95 +166,9 @@ for s in SONGS:
     # single-file version (for the claude.ai artifact): everything inline, no link back to a library
     alone = f"<meta charset=\"utf-8\">\n<title>{s['short']} Chord Trainer</title>\n<meta name=\"claude:viewport-fit-sides\" content=\"cover\">\n{FONTS}\n<style>\n{css.strip()}\n</style>\n\n" + \
         body.replace('<!--BACK-->', '') + '\n\n<script>\n' + song_js(s) + js.strip() + '\n</script>\n'
-    open(f"{OUT}/{'nocturne-chord-trainer' if s['id'].startswith('noc') else 'clair-de-lune-chord-trainer'}.html", 'w').write(alone)
+    if s['id'] in ('nocturne-op9-no2', 'clair-de-lune'):
+        open(f"{OUT}/{'nocturne-chord-trainer' if s['id'].startswith('noc') else 'clair-de-lune-chord-trainer'}.html", 'w').write(alone)
 
 # ---------------- library page ----------------
-tokens = grab(r'(/\* Layout:.*?color-scheme: dark \})\n\nbody', css)
-cards = [dict(id=s['id'], file=s['file'], title=s['title'], composer=s['composer'], facts=s['facts'], blurb=s['blurb'], chords=first_chords(s['data'])) for s in SONGS]
-index = page_head('Piano Chord Trainer', 'Learn classical piano pieces from their chords: falling notes, chord maps and rolling sheet music.') + '''<style>
-''' + tokens + '''
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5; }
-.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 64px; display: grid; gap: 40px; }
-h1, h2, h3 { font-family: var(--font-display); font-weight: 500; margin: 0; text-wrap: balance; }
-.eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-:focus-visible { outline: 2px solid var(--chord); outline-offset: 2px; }
-.hero { display: grid; gap: 12px; }
-.hero h1 { font-size: clamp(38px, 7vw, 68px); line-height: 1; letter-spacing: -.01em; }
-.hero h1 em { font-style: italic; color: var(--melody); }
-.hero p { margin: 0; max-width: 58ch; color: var(--muted); font-size: 17px; }
-.keys { display: flex; height: 34px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); max-width: 420px; }
-.keys i { flex: 1; background: var(--key-white); border-right: 1px solid var(--line); position: relative; }
-.keys i.b::after { content: ""; position: absolute; right: -22%; top: 0; width: 44%; height: 60%; background: var(--key-black); z-index: 1; border-radius: 0 0 2px 2px; }
-.keys i.m { background: var(--melody); } .keys i.c { background: var(--chord); }
-.shelf-head { display: flex; align-items: end; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; }
-.shelf-head h2 { font-size: 30px; }
-.search { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; font: inherit; color: inherit; width: min(100%, 260px); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
-.song { display: grid; gap: 10px; align-content: start; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; min-width: 0; }
-.song:hover { border-color: var(--chord); transform: translateY(-2px); }
-.song h3 { font-size: 27px; line-height: 1.1; }
-.song .who { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
-.tag { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; background: var(--melody-soft); color: var(--ink); border-radius: 999px; padding: 2px 9px; }
-.facts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.song p { margin: 0; color: var(--muted); font-size: 14px; }
-.chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 12px; color: var(--muted); }
-.chips span { font-family: var(--font-display); font-weight: 600; font-size: 14px; background: var(--chord-soft); color: var(--ink); border-radius: 6px; padding: 3px 8px; }
-.go { font-weight: 600; color: var(--chord); margin-top: 2px; }
-.empty { color: var(--muted); }
-.how { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px 28px; border-top: 1px solid var(--line); padding-top: 28px; }
-.how h3 { font-size: 20px; margin-bottom: 4px; }
-.how p { margin: 0; color: var(--muted); font-size: 14px; max-width: 40ch; }
-footer { font-size: 13px; color: var(--muted); max-width: 80ch; }
-@media (prefers-reduced-motion: reduce) { .song { transition: none; } .song:hover { transform: none; } }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <header class="hero">
-    <div class="eyebrow">Piano chord trainer</div>
-    <h1>Play it from the <em>chords</em></h1>
-    <p>Classical piano pieces for people who know their chords but do not read sheet music. Watch the notes fall onto the keys, follow the chord for each bar, and loop the hard parts slowly.</p>
-    <div class="keys" aria-hidden="true">''' + ''.join(f'<i class="{c}"></i>' for c in ['b', 'b c', '', 'b', 'b c', 'b', '', 'b c', 'b', '', 'b', 'b m', 'b', '', 'b', 'b', '', 'b m', 'b', 'b', '']) + '''</div>
-  </header>
-
-  <section aria-label="Songs" style="display:grid;gap:16px">
-    <div class="shelf-head">
-      <h2>Pieces</h2>
-      <input class="search" id="q" type="search" placeholder="Search title or composer" aria-label="Search pieces">
-    </div>
-    <div class="grid" id="grid"></div>
-    <p class="empty" id="empty" hidden>No piece matches that search.</p>
-  </section>
-
-  <section class="how" aria-label="How it works">
-    <div><h3>Falling notes</h3><p>Gold notes are the melody, blue notes are the chord. They land on the piano keys at the moment you play them.</p></div>
-    <div><h3>Chords for every bar</h3><p>A chord bar follows the music, and a full map of the piece lets you jump to any bar or loop a section.</p></div>
-    <div><h3>Sheet music, if you want it</h3><p>A simplified score rolls along with the playback. Fold it away when you do not need it.</p></div>
-  </section>
-
-  <footer>Scores come from public-domain editions typeset by the Mutopia Project. Each piece credits its sources at the bottom of its page. Sound is a synthesised piano made in your browser.<br>Want a piece added, or spotted a wrong chord? <a href="' + ISSUES + '" target="_blank" rel="noopener" style="color:var(--chord)">Suggest it on GitHub</a>.</footer>
-</div>
-<script>
-const SONGS = ''' + json.dumps(cards, ensure_ascii=False) + ''';
-let last = null; try { last = localStorage.getItem('pct-last'); } catch (e) {}
-const grid = document.getElementById('grid'), q = document.getElementById('q');
-function render() {
-  const term = q.value.trim().toLowerCase();
-  const list = SONGS.filter(s => !term || (s.title + ' ' + s.composer).toLowerCase().includes(term));
-  grid.innerHTML = list.map(s => `<a class="song" href="${s.file}">
-    <div class="who"><span class="eyebrow">${s.composer}</span>${s.id === last ? '<span class="tag">Last played</span>' : ''}</div>
-    <h3>${s.title}</h3>
-    <div class="facts">${s.facts.map(f => `<span>${f}</span>`).join('')}</div>
-    <p>${s.blurb}</p>
-    <div class="chips">Opens with ${s.chords.map(c => `<span>${c}</span>`).join('')}</div>
-    <div class="go">Practise →</div></a>`).join('');
-  document.getElementById('empty').hidden = list.length > 0;
-}
-q.addEventListener('input', render); render();
-</script>
-</body>
-</html>
-'''
-open(f'{OUT}/site/index.html', 'w').write(index)
+exec(open(f'{SP}/index_page.py').read())
 print('built', [s['id'] for s in SONGS], {f: os.path.getsize(f'{OUT}/site/{f}') for f in ['index.html', 'assets/trainer.js', 'assets/trainer.css', 'songs/nocturne-op9-no2.js', 'songs/clair-de-lune.js']})

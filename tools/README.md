@@ -26,3 +26,13 @@ python3 build_site.py <work> <output-folder>
 2. Parse it and check the bar-length report is clean.
 3. Write the chord list for each bar (symbol, Roman numeral, length in eighth notes) and the sections.
 4. Write `songs/<id>.js` in the same shape as the existing ones, copy a song page to `<id>.html`, and add a card to `SONGS` in `index.html`.
+
+## Importing from MIDI (newer pieces)
+
+`import_midi.py` reads a Mutopia MIDI file (and the `.ly` file, only for the pickup length), splits the hands, spells notes in the key, adds clef changes, and suggests a chord for each bar, half bar or beat:
+
+```bash
+python3 import_midi.py src/new/fur-elise.mid src/new/fur-elise.ly out.json --show
+```
+
+Add `--key=major` or `--key=minor` when the key signature is ambiguous (Gymnopédie No. 1 is D major, the Moonlight Sonata is C♯ minor). Check the printed chord list, then add the piece to `PIECES` in `songs_extra.py` with its text, level, era and mood. `symmap` there corrects individual chord names.
