@@ -106,6 +106,14 @@ PIECES = [
          tips=['<b>Two chords do most of the work:</b> G minor and C minor, with D7 leading home.',
                '<b>The melody is a simple song.</b> Sing it, then play it over block chords.',
                '<b>The second half repeats the first</b> with a short excursion in the middle. Loop that middle part (bars 17–24) separately.']),
+    dict(id='field-nocturne-5', title='Nocturne No. 5 in B♭ major', titleHtml='Nocturne No. 5 in <em>B♭ major</em>', composer='John Field',
+         eyebrow='John Field · Nocturne No. 5, H. 37, 1817', tempo='Andante, cantabile', difficulty=2, era='Romantic', mood='Dreamy', minutes=4, defaultStyle='orig',
+         leftHandName="Field's left hand",
+         blurb='Field invented the nocturne, and Chopin learned from him. A gentle singing tune over a rocking 12/8 left hand, mostly in B♭.',
+         tips=['<b>Start with bars 1–4.</b> B♭ with a passing diminished chord in each bar: the same rocking shape comes back throughout.',
+               '<b>The left hand is the nocturne pattern:</b> a low bass note, then the chord spread upwards. Listen to it with “Field’s left hand”.',
+               '<b>Bars 14–17 move fast,</b> one chord per beat. Loop them slowly with Block chords before adding the melody.',
+               '<b>Let the melody sing.</b> The marking is “cantabile”: play the gold notes a little louder than the accompaniment.']),
 ]
 for P in PIECES:
     src = P.get('src', P['id'])
@@ -136,10 +144,10 @@ for P in PIECES:
         secs.append({'id': str(len(secs) + 1), 'from': n, 'to': to, 'what': what})
         n = to + 1
     num, den = imp['time'].split('/')
-    feel = {'3/4': 'three beats', '3/8': 'three quick counts', '2/4': 'two beats', '4/4': 'four beats', '2/2': 'two half-note beats'}[imp['time']]
+    feel = {'3/4': 'three beats', '3/8': 'three quick counts', '2/4': 'two beats', '4/4': 'four beats', '2/2': 'two half-note beats', '12/8': 'four beats of three', '6/8': 'two beats of three', '9/8': 'three beats of three'}[imp['time']]
     count = {'3/4': 'three beats, each a quarter note (count “1-and, 2-and, 3-and”)', '3/8': 'three quick counts, one per eighth note',
              '2/4': 'two beats, each a quarter note (count “1-and, 2-and”)', '4/4': 'four beats, each a quarter note (count “1-and, 2-and…”)',
-             '2/2': 'two beats, each a half note (count “1-e-and-a, 2-e-and-a”)'}[imp['time']]
+             '2/2': 'two beats, each a half note (count “1-e-and-a, 2-e-and-a”)', '12/8': 'four beats, each three eighth notes long (count “1-and-a, 2-and-a…”)', '6/8': 'two beats, each three eighth notes long (count “1-and-a, 2-and-a”)', '9/8': 'three beats, each three eighth notes long (count “1-and-a, 2-and-a, 3-and-a”)'}[imp['time']]
     texts = dict(eyebrow=P['eyebrow'], title=P['titleHtml'],
                  meta=f'<span><b>Key</b> {imp["key"]}</span><span><b>Time</b> {imp["time"]}, {feel}</span><span><b>{P["tempo"]}</b></span><span><b>Length</b> {nb} bars</span>',
                  practice=''.join(f'<li>{t}</li>' for t in P['tips']), glossary=GLOSSARY,

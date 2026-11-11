@@ -115,7 +115,7 @@ TEMPLATES = [   # (suffix, intervals, roman suffix, quality for case)
     ('m7♭5', (0, 3, 6, 10), 'ø⁷', 'm'), ('°7', (0, 3, 6, 9), '°⁷', 'm'), ('sus4', (0, 5, 7), 'sus', 'M'),
     ('7sus', (0, 5, 7, 10), '⁷sus', 'M'),
 ]
-STEP_OF = {0: 0, 3: 2, 4: 2, 5: 3, 6: 4, 7: 4, 8: 4, 9: 6, 10: 6, 11: 6}   # letters above root per interval
+STEP_OF = {0: 0, 3: 2, 4: 2, 5: 3, 6: 4, 7: 4, 8: 4, 9: 5, 10: 6, 11: 6}   # dim 7th written as a sixth (C°7 = C E♭ G♭ A)   # letters above root per interval
 
 def chord_tones(root_li, root_a, ivs):
     out = []

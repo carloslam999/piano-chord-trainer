@@ -16,6 +16,7 @@ Live site: https://carloslam999.github.io/piano-chord-trainer/
 | Moonlight Sonata, 1st movement | Beethoven | Intermediate |
 | Prelude in E minor, Op. 28 No. 4 | Chopin | Intermediate |
 | Träumerei, Op. 15 No. 7 | Schumann | Intermediate |
+| Nocturne No. 5 in B♭ major, H. 37 | Field | Intermediate |
 | Nocturne in E♭ major, Op. 9 No. 2 | Chopin | Advanced |
 | Clair de Lune | Debussy | Advanced |
 
@@ -33,3 +34,4 @@ To add a piece, see `tools/README.md`: `tools/import_midi.py` turns a Mutopia MI
 - Nocturne chords follow the bar-by-bar table at chopinlefthand.com. Its notes come from the G. Schirmer 1881 edition as typeset by the Mutopia Project (Renato Biolcati Rinaldi), licensed CC BY-SA 3.0; that note data is shared here under the same license.
 - Clair de Lune notes come from the E. Fromont 1905 edition as typeset by the Mutopia Project (Keith OHara, public domain). Its chord names are an original reading of the score.
 - The eight pieces added in November 2026 come from Mutopia Project MIDI and LilyPond files. Gnossienne No. 1 (Knute Snortum) is CC BY-SA 4.0 and the Moonlight Sonata (Stewart Holmes) is CC BY-SA 2.5; their note data is shared here under the same licenses. The others are public domain. Their chord names were worked out automatically from the notes and spot-checked.
+- John Field's Nocturne No. 5 (Alex Schreiber, Mutopia Project) is CC BY-SA 4.0; its note data is shared here under the same license.
