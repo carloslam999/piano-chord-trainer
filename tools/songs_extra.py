@@ -156,3 +156,5 @@ LIB = {   # library metadata for the two hand-made pieces
 }
 for s in SONGS:
     if 'lib' not in s: s['lib'] = LIB[s['id']]
+
+exec(open(f'{SP}/theme.py').read())

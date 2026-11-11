@@ -97,6 +97,12 @@ const $ = id => document.getElementById(id);
 $('songEyebrow').textContent = SONG.eyebrow; $('songTitle').innerHTML = SONG.titleHtml; $('songMeta').innerHTML = SONG.metaHtml;
 $('practice').innerHTML = SONG.practiceHtml; $('glossary').innerHTML = SONG.glossaryHtml; $('credits').innerHTML = SONG.creditsHtml;
 $('countText').textContent = SONG.countText;
+{ const L = D.lib || {}, LV = { 1: ['Beginner', '#24C49B'], 2: ['Intermediate', '#FFC83A'], 3: ['Advanced', '#FF6A50'] }[L.difficulty];
+  if (LV) $('songBadges').innerHTML = `<span class="lvl" style="background:${LV[1]}">${LV[0]}</span><span class="mood">${L.mood}</span><span>${L.era}</span><span>~${L.minutes} min</span>`; }
+{ const btn = $('themeBtn'), sync = () => { const dark = document.documentElement.dataset.theme === 'dark'; btn.textContent = dark ? '☀ Light' : '☾ Dark'; btn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode'); };
+  btn.onclick = () => { const dark = document.documentElement.dataset.theme !== 'dark'; if (dark) document.documentElement.dataset.theme = 'dark'; else delete document.documentElement.dataset.theme;
+    try { localStorage.setItem('pct-theme', dark ? 'dark' : 'light'); } catch (e) {} sync(); };
+  sync(); }
 $('style').options[2].textContent = SONG.leftHand; $('style').value = SONG.defaultStyle;
 $('loopFrom').max = NB; $('loopTo').max = NB;
 document.documentElement.style.setProperty('--beats', BEATS);
@@ -345,7 +351,7 @@ function updatePanel(p) {
 const LO = D.lo, HI = D.hi || 100, roll = $('roll'), keys = $('keys');
 const isBlack = m => [1, 3, 6, 8, 10].includes(m % 12);
 let geo = null, col = {}, flash = null;
-function readColors() { const cs = getComputedStyle(document.documentElement); for (const k of ['melody','melody-soft','chord','chord-soft','bass','key-white','key-black','roll-bg','grid','line','ink','muted','surface']) col[k] = cs.getPropertyValue('--' + k).trim(); }
+function readColors() { const cs = getComputedStyle(document.documentElement); for (const k of ['roll-chord','roll-bass','roll-text','sheet-rh','sheet-lh','coral','melody','melody-soft','chord','chord-soft','bass','key-white','key-black','roll-bg','grid','line','ink','muted','surface']) col[k] = cs.getPropertyValue('--' + k).trim(); }
 function layout() {
   const dpr = window.devicePixelRatio || 1;
   for (const c of [roll, keys, sheetC]) { const r = c.getBoundingClientRect(); c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0); }
@@ -371,7 +377,7 @@ function draw() {
   for (const b of D.bars) for (let e = 0; e <= b.len; e += BL) {
     const y = RH - (b.start + e - p) * ppe; if (y < 0 || y > RH) continue;
     ctx.fillStyle = col.grid; ctx.fillRect(0, y, W, e === 0 ? 2 : 1);
-    if (e === 0) { ctx.fillStyle = col.muted; ctx.font = '11px ' + getComputedStyle(document.body).fontFamily; ctx.fillText('Bar ' + b.n, 6, y - 4); }
+    if (e === 0) { ctx.fillStyle = col['roll-text']; ctx.font = '11px ' + getComputedStyle(document.body).fontFamily; ctx.fillText('Bar ' + b.n, 6, y - 4); }
   }
   const active = {};
   const accOn = $('accOn').checked, melOn = $('melOn').checked;
@@ -381,7 +387,7 @@ function draw() {
     if (e.bus === 'acc' && !accOn || e.bus === 'mel' && !melOn) continue;
     const g = x[e.m]; if (!g) continue;
     const y1 = RH - (e.t - p) * ppe, y0 = RH - (e.t + e.d - p) * ppe;
-    const c = e.bus === 'mel' ? col.melody : e.bass ? col.bass : col.chord;
+    const c = e.bus === 'mel' ? col.melody : e.bass ? col['roll-bass'] : col['roll-chord'];
     ctx.fillStyle = c; rr(ctx, g.x + 1.5, y0 + 1, g.w - 3, Math.max(4, y1 - y0 - 2), 4); ctx.fill();
     if (e.t <= p + 1e-6 && p < e.t + e.d) active[e.m] = c;
   }
@@ -502,7 +508,7 @@ function drawSheet(p) {
     c.fillStyle = col.muted; c.fillText(b.n, x + 4, Y_T - 7);
   }
   // key changes: say so above the staff (the signature at the left follows the playhead)
-  c.font = 'italic 12px ' + getComputedStyle(document.body).fontFamily; c.fillStyle = col.melody;
+  c.font = 'italic 12px ' + getComputedStyle(document.body).fontFamily; c.fillStyle = col.coral;
   for (const [kt, kv] of D.keys) { const x = X(kt) - 8; if (kt > 0 && x > LEFT && x < W) c.fillText(`key changes: ${Math.abs(kv)} ${kv < 0 ? 'flats' : 'sharps'}`, x, Y_T - 22); }
   // 8va brackets
   for (const [a, z, st] of OTT_SPANS) {
@@ -519,7 +525,7 @@ function drawSheet(p) {
   for (const g of SG) {
     const x = X(g.t); if (x > W + 30) break; if (x < LEFT - 30) continue;
     const on = g.t <= p + 1e-6 && p < g.t + g.d - 1e-6;
-    const ink = on ? (g.st ? col.chord : col.melody) : col.ink;
+    const ink = on ? (g.st ? col['sheet-lh'] : col['sheet-rh']) : col.ink;
     c.strokeStyle = ink; c.fillStyle = ink; c.lineWidth = 1.1;
     // ledger lines
     c.beginPath();
@@ -552,7 +558,7 @@ function drawSheet(p) {
     const xa = X(b.t0), xb = X(b.t1); if (xb < LEFT - 30 || xa > W + 30) continue;
     const st = b.gs[0].st, off = b.up ? rx - 0.6 : -rx + 0.6, th = SP * 0.5 * (b.up ? 1 : -1);
     const on = b.gs.some(g => g.t <= p + 1e-6 && p < g.t + g.d - 1e-6);
-    c.fillStyle = on ? (st ? col.chord : col.melody) : col.ink;
+    c.fillStyle = on ? (st ? col['sheet-lh'] : col['sheet-rh']) : col.ink;
     const seg = (ta, tb, lvl) => { const ya = Y(st, b.at(ta)) + lvl * th * 1.6, yb = Y(st, b.at(tb)) + lvl * th * 1.6; c.beginPath(); c.moveTo(X(ta) + off, ya); c.lineTo(X(tb) + off, yb); c.lineTo(X(tb) + off, yb + th); c.lineTo(X(ta) + off, ya + th); c.closePath(); c.fill(); };
     seg(b.t0, b.t1, 0);
     for (let i = 0; i < b.gs.length; i++) {
