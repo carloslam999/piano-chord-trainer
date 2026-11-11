@@ -147,8 +147,9 @@ def share_tags(title, desc, path):
             f'<meta property="og:image" content="{SITE}assets/preview.png">\n<meta property="og:image:width" content="1200">\n'
             f'<meta property="og:image:height" content="630">\n<meta name="twitter:card" content="summary_large_image">\n'
             f'<meta name="theme-color" content="#0E0F1E">\n')
+GOAT = '<script data-goatcounter="https://pianochord.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>\n'
 def page_head(title, desc, path=''):
-    return f'<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<title>{title}</title>\n<meta name="description" content="{desc}">\n' + share_tags(title, desc, path) + f'{FONTS}\n'
+    return f'<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<title>{title}</title>\n<meta name="description" content="{desc}">\n' + share_tags(title, desc, path) + f'{FONTS}\n' + GOAT
 
 os.makedirs(f'{OUT}/site/assets', exist_ok=True); os.makedirs(f'{OUT}/site/songs', exist_ok=True)
 import shutil; shutil.copy(f'{SP}/preview.png', f'{OUT}/site/assets/preview.png')
