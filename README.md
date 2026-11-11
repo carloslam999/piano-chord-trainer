@@ -2,7 +2,7 @@
 
 Play-along pages for learning classical piano pieces from their chords: falling melody and chord notes on a piano, a chord bar and full chord map, rolling sheet music, looping and adjustable speed.
 
-Live site: https://carloslam999.github.io/nocturne-chord-trainer/
+Live site: https://carloslam999.github.io/piano-chord-trainer/
 
 ## Pieces
 
