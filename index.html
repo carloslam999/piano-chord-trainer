@@ -26,7 +26,7 @@
   color-scheme: dark }
 
 body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5; }
-.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 36px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 56px; display: grid; gap: 22px; }
 h1, h2, h3 { font-family: var(--font-display); font-weight: 500; text-wrap: balance; margin: 0; }
 .eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 [hidden] { display: none !important; }
@@ -34,8 +34,8 @@ button, select, input { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--chord); outline-offset: 2px; }
 
 /* Header */
-.top { display: grid; gap: 10px; }
-.top h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.02; letter-spacing: -.01em; }
+.top { display: grid; gap: 4px; }
+.top h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.08; letter-spacing: -.01em; }
 .top h1 em { font-style: italic; color: var(--melody); }
 .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 14px; }
 .meta b { color: var(--ink); font-weight: 600; }
@@ -45,11 +45,11 @@ button, select, input { font: inherit; color: inherit; }
 .stage { display: grid; gap: 14px; }
 .board { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.6fr); gap: 14px; }
 @media (max-width: 820px) { .board { grid-template-columns: minmax(0, 1fr); } }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; min-width: 0; }
 
-.now { display: grid; gap: 12px; align-content: start; }
+.now { display: grid; gap: 8px; align-content: start; }
 .now-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.now-sym { font-family: var(--font-display); font-size: clamp(56px, 9vw, 84px); line-height: .9; color: var(--chord); }
+.now-sym { font-family: var(--font-display); font-size: clamp(46px, 7vw, 64px); line-height: .9; color: var(--chord); }
 .now-rom { font-family: var(--font-display); font-style: italic; font-size: 24px; color: var(--muted); }
 .tones { display: flex; flex-wrap: wrap; gap: 6px; }
 .tone { padding: 3px 10px; border-radius: 999px; background: var(--chord-soft); color: var(--ink); font-weight: 600; font-size: 14px; }
@@ -67,7 +67,7 @@ button, select, input { font: inherit; color: inherit; }
 .sec-tag { font-size: 13px; color: var(--muted); }
 .sec-tag b { font-family: var(--font-display); color: var(--ink); font-size: 16px; }
 
-.controls { display: grid; gap: 14px; align-content: start; }
+.controls { display: grid; gap: 10px; align-content: start; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
 .btn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 8px 16px; cursor: pointer; font-weight: 600; }
 .btn:hover { border-color: var(--chord); }
@@ -89,10 +89,16 @@ kbd { font-family: var(--font-ui); font-size: 12px; border: 1px solid var(--line
 .piano-scroll { overflow-x: auto; }
 .piano-inner { min-width: 760px; }
 .piano canvas { display: block; width: 100%; }
-#roll { height: 230px; }
-#keys { height: 110px; cursor: pointer; }
+#roll { height: 180px; }
+#keys { height: 96px; cursor: pointer; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.strip { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+.strip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.strip-bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); gap: 8px; overflow-x: auto; position: relative; padding: 2px; }
+.strip .bar { background: var(--bg); padding: 5px 8px 7px; gap: 4px; }
+.strip .chip { padding: 5px 2px 4px; }
 
 /* Chord map */
 .map { display: grid; gap: 22px; }
@@ -145,7 +151,6 @@ footer a { color: var(--chord); }
     <div class="eyebrow">Frédéric Chopin · composed 1830–32</div>
     <h1>Nocturne in <em>E♭</em> major, Op. 9 No. 2</h1>
     <div class="meta"><span><b>Key</b> E♭ major</span><span><b>Time</b> 12/8, four beats of three</span><span><b>Andante</b> ♪ = 132</span><span><b>Length</b> 34 bars</span></div>
-    <p class="intro">Play the chords with your left hand while the melody falls toward the keys. Gold notes are the tune, blue notes are the chord. You never need to read the score: watch where the notes land, and use the chord map below to learn one bar at a time.</p>
   </header>
 
   <section class="stage" aria-label="Player">
@@ -215,11 +220,15 @@ footer a { color: var(--chord); }
             <input type="number" id="loopTo" min="1" max="34" value="4" aria-label="Loop to bar">
           </span>
         </div>
-        <p class="hint"><kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> move a bar · tap any key to hear it · the bar's speed mark is ♪ = 132, so start slower.</p>
+        <p class="hint" style="display:none"><kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> move a bar · tap any key to hear it · the bar's speed mark is ♪ = 132, so start slower.</p>
       </div>
     </div>
 
     <div class="piano">
+      <div class="strip" id="strip" aria-label="Chords in this section">
+        <div class="strip-head"><span class="sec-tag" id="stripTitle"></span><span id="stripNext"></span></div>
+        <div class="strip-bars" id="stripBars"></div>
+      </div>
       <div class="piano-scroll" id="pianoScroll">
         <div class="piano-inner">
           <canvas id="roll" aria-label="Falling notes"></canvas>
@@ -230,7 +239,8 @@ footer a { color: var(--chord); }
         <span><span class="swatch" style="background:var(--melody)"></span>Melody, right hand</span>
         <span><span class="swatch" style="background:var(--chord)"></span>Chord, left hand</span>
         <span><span class="swatch" style="background:var(--bass)"></span>Bass note</span>
-        <span>Faint outline on keys = notes of the current chord</span>
+        <span>Outlined keys = notes of the current chord</span>
+        <span><kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> move a bar</span>
       </div>
     </div>
   </section>
@@ -239,7 +249,7 @@ footer a { color: var(--chord); }
     <div class="map-head">
       <div class="eyebrow">Bar by bar</div>
       <h2>The chord map</h2>
-      <p>Each card is one bar: four beats, each three eighth notes long (count “1-and-a, 2-and-a…”). A chord's width shows how long it lasts. Tap a chord to hear it and jump there; tap “play” on a card to start from that bar.</p>
+      <p>The strip above the piano shows the section being played; this is the whole piece. Each card is one bar: four beats, each three eighth notes long (count “1-and-a, 2-and-a…”). A chord's width shows how long it lasts. Tap a chord to hear it and jump there; tap “play” on a card to start from that bar.</p>
     </div>
     <div id="map"></div>
   </section>
@@ -560,7 +570,38 @@ const meter = $('meter');
 for (let b = 0; b < 4; b++) { const g = document.createElement('span'); g.className = 'beat'; for (let k = 0; k < 3; k++) { const i = document.createElement('i'); if (!k) i.className = 'big'; g.appendChild(i); } meter.appendChild(g); }
 const dots = [...meter.querySelectorAll('i')];
 let lastChord = -1, lastBar = -1, lastEighth = -1, curNames = {};
+const stripBars = $('stripBars'); let stripSec = null, stripChips = {}, stripBarEls = {};
+function renderStrip(s) {
+  stripSec = s; stripChips = {}; stripBarEls = {}; stripBars.innerHTML = '';
+  const nx = SECTIONS[SECTIONS.indexOf(s) + 1];
+  $('stripTitle').innerHTML = `<b>${s.id}</b> · bars ${s.from}–${s.to}`;
+  $('stripNext').textContent = nx ? `then ${nx.id} (bars ${nx.from}–${nx.to})` : 'then the end';
+  for (let n = s.from; n <= s.to; n++) {
+    const b = D.bars[n - 1], el = document.createElement('div'); el.className = 'bar';
+    el.innerHTML = `<div class="bar-n"><span>Bar ${n}${n === 32 ? ' · cadenza, free time' : ''}</span></div><div class="chips"></div>`;
+    const chips = el.querySelector('.chips');
+    let ci = CHORDS.findIndex(c => c.bar === n);
+    b.chords.forEach(([sym, rom, off, d]) => {
+      const c = document.createElement('button'); c.type = 'button';
+      c.className = 'chip' + (d < 3 ? ' tiny' : '');
+      c.style.flex = `${d} 1 0`;
+      c.title = `${sym} = ${CH[sym].join(' – ')}  (${rom})`;
+      c.innerHTML = `<span class="s">${sym}</span><span class="ro">${rom}</span>`;
+      c.onclick = () => { setPos(b.start + off); if (!playing) auditionChord(sym); };
+      if (d < 3) {
+        const beat = Math.floor(off / 3 + 1e-6);
+        let st = chips.querySelector(`.stack[data-b="${beat}"]`);
+        if (!st) { st = document.createElement('div'); st.className = 'stack'; st.dataset.b = beat; st.style.flex = '3 1 0'; chips.appendChild(st); }
+        st.appendChild(c);
+      } else chips.appendChild(c);
+      stripChips[ci++] = c;
+    });
+    stripBars.appendChild(el); stripBarEls[n] = el;
+  }
+}
 function updatePanel(p) {
+  const s0 = secOf(barAt(Math.max(p, 1)).n);
+  if (s0 !== stripSec) { renderStrip(s0); lastChord = -1; lastBar = -1; }
   const ci = p < 1 ? 0 : chordIndexAt(p), c = CHORDS[ci];
   if (ci !== lastChord) {
     lastChord = ci;
@@ -571,10 +612,13 @@ function updatePanel(p) {
     const nx = CHORDS[ci + 1];
     $('nextChord').innerHTML = nx ? `Next: <b>${nx.s}</b> &nbsp;in bar ${nx.bar}` : 'Last chord: let it ring';
     chipEls.forEach((el, i) => el.classList.toggle('cur', i === ci));
+    for (const k in stripChips) stripChips[k].classList.toggle('cur', +k === ci);
   }
   const b = barAt(Math.max(p, 1));
   if (b.n !== lastBar) {
     lastBar = b.n; barEls.forEach((el, i) => el.classList.toggle('cur', i === b.n - 1));
+    for (const k in stripBarEls) stripBarEls[k].classList.toggle('cur', +k === b.n);
+    if (stripBarEls[b.n]) stripBars.scrollLeft = stripBarEls[b.n].offsetLeft - 8;
     const s = secOf(b.n); $('secTag').innerHTML = `<b>${s.id}</b> · bars ${s.from}–${s.to}`;
   }
   const e = p < 1 ? -1 : Math.floor(p - b.start + 1e-6);
