@@ -29,9 +29,18 @@ const barAt = p => { let b = D.bars[0]; for (const x of D.bars) if (x.start <= p
 function chordIndexAt(p) { let k = 0; for (let i = 0; i < CHORDS.length; i++) if (CHORDS[i].t <= p + 1e-6) k = i; return k; }
 
 /* ---------- audio ---------- */
+function iosAudioUnlock() {
+  try { if (navigator.audioSession) { navigator.audioSession.type = 'playback'; return; } } catch (e) {}
+  if (iosAudioUnlock.el || !/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent) || !('ontouchend' in document)) return;
+  const el = iosAudioUnlock.el = document.createElement('audio');
+  el.src = 'data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA'; el.loop = true; el.setAttribute('playsinline', ''); el.setAttribute('x-webkit-airplay', 'deny');
+  const p = el.play(); if (p && p.catch) p.catch(() => { iosAudioUnlock.el = null; });
+}
+
 let ac = null, master, buses = {}, voices = new Set();
 function initAudio() {
   if (ac) return;
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
   ac = new (window.AudioContext || window.webkitAudioContext)();
   const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
   master = ac.createGain(); master.gain.value = 0.9;
@@ -179,7 +188,7 @@ function tick() {
   }
 }
 function play() {
-  initAudio(); ac.resume();
+  initAudio(); iosAudioUnlock(); ac.resume();
   if (pos >= D.end - 0.01) pos = 0;
   loop = loopRange();
   if (loop && (pos < loop[0] || pos >= loop[1])) pos = loop[0];
@@ -200,7 +209,7 @@ function setPos(p) {
 }
 function restartLoop() { if (playing) { const p = curPos(); silence(); pos = p; loop = loopRange(); if (loop && (p < loop[0] || p >= loop[1])) pos = loop[0]; anchor(pos); } }
 function auditionChord(sym) {
-  initAudio(); ac.resume();
+  initAudio(); iosAudioUnlock(); ac.resume();
   const { bass, upper } = voicing(sym), t = ac.currentTime + 0.02;
   playNote(bass, t, 1.6, 0.22, 'ui'); upper.forEach((m, i) => playNote(m, t + 0.03 * (i + 1), 1.6, 0.13, 'ui'));
   flash = { notes: [bass, ...upper], until: performance.now() + 1200 };
@@ -208,7 +217,7 @@ function auditionChord(sym) {
 $('melTone').onchange = () => {
   melTone = $('melTone').value;
   if (playing) { const p = curPos(); silence(); anchor(p); }
-  else { initAudio(); ac.resume(); [79, 77, 79, 75].forEach((m, i) => playNote(m, ac.currentTime + 0.05 + i * 0.32, 0.4, 0.26, 'mel')); }
+  else { initAudio(); iosAudioUnlock(); ac.resume(); [79, 77, 79, 75].forEach((m, i) => playNote(m, ac.currentTime + 0.05 + i * 0.32, 0.4, 0.26, 'mel')); }
 };
 $('melVol').oninput = applyMutes;
 function applyMutes() { if (!ac) return; buses.mel.gain.value = $('melOn').checked ? $('melVol').value / 100 : 0; buses.acc.gain.value = $('accOn').checked ? 1 : 0; }
@@ -423,7 +432,7 @@ keys.addEventListener('pointerdown', ev => {
   for (let m = LO; m <= HI; m++) { const g = geo.x[m]; if (g.black && py < geo.KH * 0.62 && px >= g.x && px < g.x + g.w) hit = m; }
   if (hit == null) for (let m = LO; m <= HI; m++) { const g = geo.x[m]; if (!g.black && px >= g.x && px < g.x + g.w) hit = m; }
   if (hit == null) return;
-  initAudio(); ac.resume(); playNote(hit, ac.currentTime + 0.01, 0.9, 0.25, 'ui');
+  initAudio(); iosAudioUnlock(); ac.resume(); playNote(hit, ac.currentTime + 0.01, 0.9, 0.25, 'ui');
   flash = { notes: [hit], until: performance.now() + 500 };
 });
 

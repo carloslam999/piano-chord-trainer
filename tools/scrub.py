@@ -74,3 +74,11 @@ js += r'''
   }, { passive: false });
 }
 '''
+
+# ---------- sound on iPhones with the silent switch on ----------
+exec(open(f'{SP}/ios_audio.py').read())
+_a = '  ac = new (window.AudioContext || window.webkitAudioContext)();'
+assert _a in js and js.count('initAudio(); ac.resume();') >= 3
+js = js.replace(_a, "  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}\n" + _a, 1)
+js = js.replace('initAudio(); ac.resume();', 'initAudio(); iosAudioUnlock(); ac.resume();')
+js = js.replace('/* ---------- audio ---------- */', '/* ---------- audio ---------- */\n' + IOS_UNLOCK, 1)

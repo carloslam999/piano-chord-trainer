@@ -278,7 +278,7 @@ const PH = [[0,.5,76,'a'],[.5,.5,75,'a'],[1,.5,76,'a'],[1.5,.5,75,'a'],[2,.5,76,
 const CH_AT = [[0, 'E'], [4, 'Am'], [7, 'E'], [10, 'Am']];
 const LOOP = 12, SPE = 0.27;
 let ac = null, soundOn = false, flash = {}, nextIdx = 0, loopStart = performance.now();
-function audio() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); return ac; }
+function audio() { iosAudioUnlock(); if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state !== 'running') ac.resume(); return ac; }
 function tone(m, dur = 0.6, vel = 0.18) {
   const a = audio(), t = a.currentTime, f = 440 * Math.pow(2, (m - 69) / 12);
   const o = a.createOscillator(), o2 = a.createOscillator(), g = a.createGain(), lp = a.createBiquadFilter();
@@ -346,4 +346,7 @@ requestAnimationFrame(frame);
 </body>
 </html>
 '''
+exec(open(f'{SP}/ios_audio.py').read())
+assert index.count('function audio() {') == 1
+index = index.replace('function audio() {', IOS_UNLOCK + 'function audio() {', 1)
 open(f'{OUT}/site/index.html', 'w').write(index)
