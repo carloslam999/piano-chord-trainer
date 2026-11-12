@@ -154,6 +154,17 @@ PIECES = [
                '<b>Bar 12 has the one surprise,</b> a big F♯7 chord leading to B minor. Practise that bar on its own.',
                '<b>The rhythm repeats every two bars:</b> a dotted note, a short note, then a long chord.',
                '<b>Play it softly and slowly.</b> It is over in under a minute.']),
+    dict(id='bach-minuet-g-minor', title='Minuet in G minor, BWV Anh. 115', titleHtml='Minuet in <em>G minor</em>', composer='Johann Sebastian Bach',
+         eyebrow='Anna Magdalena Bach Notebook, BWV Anh. 115, 1725 · now credited to Christian Petzold', tempo='Moderato', difficulty=1, era='Baroque', mood='Melancholy', minutes=2, defaultStyle='orig',
+         leftHandName='Original left hand', repeatsOut=False,
+         blurb='The darker twin of the famous Minuet in G major, from the same notebook. One melody line over a walking bass, so it is a perfect first Baroque piece.',
+         symmap={'Am': ('A°', 'ii°'), 'Am/C': ('A°/C', 'ii°⁶'), 'Cm7/G': ('Gm', 'i'), 'G7/B': ('G7/B', 'V⁷/iv'), 'F7/C': ('F7/C', 'V⁷/III'),
+                 'C7/G': ('C7/G', 'V⁷/VII'), 'G/B': ('G/B', 'V/iv')},
+         addChords={'A°': ['A', 'C', 'E♭']},
+         tips=['<b>The left hand mostly plays one note at a time,</b> walking down step by step (G, F, E♭, D) in the opening bars. Learn that bass line first.',
+               '<b>Two halves of 16 bars, each played twice.</b> The first half stays in G minor; the second visits B♭ major before coming home.',
+               '<b>Bars 13 to 16 are a sequence:</b> G7 then F7, the same shape one step lower, landing on B♭.',
+               '<b>Keep it in three:</b> a minuet is a dance, so lean a little on beat 1 of every bar.']),
 ]
 for P in PIECES:
     src = P.get('src', P['id'])
@@ -168,7 +179,7 @@ for P in PIECES:
     for sym in {c[0] for b in D['bars'] for c in b['chords']}:
         base = sym.split('/')[0]
         if base not in CH:   # a plain triad added by a correction
-            from_imp = {'E': ['E', 'G♯', 'B']}
+            from_imp = {'E': ['E', 'G♯', 'B'], **P.get('addChords', {})}
             CH[base] = from_imp[base]
     # sections: 8-bar groups (4 for very short pieces), described by the chords they use
     nb = len(D['bars']); size = 8 if nb > 20 else 4
@@ -191,7 +202,7 @@ for P in PIECES:
     texts = dict(eyebrow=P['eyebrow'], title=P['titleHtml'],
                  meta=f'<span><b>Key</b> {imp["key"]}</span><span><b>Time</b> {imp["time"]}, {feel}</span><span><b>{P["tempo"]}</b></span><span><b>Length</b> {nb} bars</span>',
                  practice=''.join(f'<li>{t}</li>' for t in P['tips']), glossary=GLOSSARY,
-                 credits=f'Notes come from the {hdr("source")} edition as typeset by the <a href="https://www.mutopiaproject.org" target="_blank" rel="noopener">Mutopia Project</a> ({hdr("maintainer")}, {lic}), with grace notes left out and repeats written out. '
+                 credits=f'Notes come from the {hdr("source")} edition as typeset by the <a href="https://www.mutopiaproject.org" target="_blank" rel="noopener">Mutopia Project</a> ({hdr("maintainer")}, {lic}), with grace notes left out' + (' and repeats written out' if P.get('repeatsOut', True) else '') + '. '
                          'The chord names were worked out automatically from the notes and spot-checked, so a few bars may simplify the harmony. Sound is a synthesised piano made in your browser.')
     SONGS.append(dict(id=P['id'], file=P['id'] + '.html', title=P['title'], short=P['title'], composer=P['composer'], facts=[imp['key'], imp['time'], f'{nb} bars'],
                       blurb=P['blurb'], texts=texts, data=D, chords=json.dumps(CH, ensure_ascii=False), sections=json.dumps(secs, ensure_ascii=False),
