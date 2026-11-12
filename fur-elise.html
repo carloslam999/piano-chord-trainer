@@ -27,11 +27,19 @@
 <div class="wrap">
   <nav class="sitebar"><a class="logo" href="./"><i aria-hidden="true"><b></b><b></b><b></b></i>Piano Chord Trainer</a><span class="sitebar-r"><button class="themebtn" id="themeBtn" type="button" aria-label="Switch to dark mode">☾ Dark</button><a class="back" href="./">← All songs</a></span></nav>
   <header class="top">
-    <div class="eyebrow" id="songEyebrow"></div>
-    <h1 id="songTitle"></h1>
-    <div class="meta" id="songMeta"></div>
-    <div class="badges" id="songBadges"></div>
-    <div class="fact-toast" id="factToast" role="status" aria-live="polite" hidden><button class="fact-x" id="factX" type="button" aria-label="Close fun fact">×</button><b id="factHead">♪ Fun fact</b><p id="factText"></p></div>
+    <div class="top-main">
+      <div class="eyebrow" id="songEyebrow"></div>
+      <h1 id="songTitle"></h1>
+      <div class="meta" id="songMeta"></div>
+      <div class="badges" id="songBadges"></div>
+    </div>
+    <aside class="fact-note" id="factNote" aria-label="Fun fact" hidden>
+      <span class="fn-drift" aria-hidden="true"><i>♪</i><i>♫</i><i>♪</i></span>
+      <button class="fn-card" id="factCard" type="button" aria-expanded="false">
+        <span class="fn-front"><span class="fn-mascot" aria-hidden="true">♫</span><span class="fn-txt"><b>Psst! Did you know…?</b><small>Tap for a fun fact about this piece</small></span></span>
+        <span class="fn-back" aria-live="polite"><b id="factHead">🎵 Fun fact</b><span id="factText"></span><small>Tap to fold it away</small></span>
+      </button>
+    </aside>
   </header>
 
   <section class="stage" aria-label="Player">

@@ -1,5 +1,5 @@
-# exec'd at the end of scrub.py: one fun fact per piece, shown once when you reach the end of the piece,
-# and any time from a small "♪ Fun fact" pill next to the badges.
+# exec'd at the end of scrub.py: one fun fact per piece, on a sticky note that floats in the header next to the title.
+# Tap the note to flip it open. Reaching the end of the piece flips it open once, with a little burst of notes.
 
 FACTS = {
     'nocturne-op9-no2': 'Chopin wrote this nocturne at about 20 and dedicated the set to Marie Pleyel, wife of the Paris piano maker Camille Pleyel, whose pianos Chopin loved.',
@@ -28,44 +28,108 @@ for s in SONGS:
     assert s['id'] in FACTS, ('no fun fact for', s['id'])
     s['data']['fact'] = FACTS[s['id']]
 
-body = body.replace('<div class="badges" id="songBadges"></div>',
-    '<div class="badges" id="songBadges"></div>\n    <div class="fact-toast" id="factToast" role="status" aria-live="polite" hidden><button class="fact-x" id="factX" type="button" aria-label="Close fun fact">×</button><b id="factHead">♪ Fun fact</b><p id="factText"></p></div>', 1)
-assert 'id="factToast"' in body
+_head = '''<header class="top">
+    <div class="eyebrow" id="songEyebrow"></div>
+    <h1 id="songTitle"></h1>
+    <div class="meta" id="songMeta"></div>
+    <div class="badges" id="songBadges"></div>
+  </header>'''
+assert body.count(_head) == 1, 'song header markup changed'
+body = body.replace(_head, '''<header class="top">
+    <div class="top-main">
+      <div class="eyebrow" id="songEyebrow"></div>
+      <h1 id="songTitle"></h1>
+      <div class="meta" id="songMeta"></div>
+      <div class="badges" id="songBadges"></div>
+    </div>
+    <aside class="fact-note" id="factNote" aria-label="Fun fact" hidden>
+      <span class="fn-drift" aria-hidden="true"><i>♪</i><i>♫</i><i>♪</i></span>
+      <button class="fn-card" id="factCard" type="button" aria-expanded="false">
+        <span class="fn-front"><span class="fn-mascot" aria-hidden="true">♫</span><span class="fn-txt"><b>Psst! Did you know…?</b><small>Tap for a fun fact about this piece</small></span></span>
+        <span class="fn-back" aria-live="polite"><b id="factHead">🎵 Fun fact</b><span id="factText"></span><small>Tap to fold it away</small></span>
+      </button>
+    </aside>
+  </header>''', 1)
 
 css += '''
-.badges .factbtn { font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--sun); color: #14151C; border-color: #14151C; }
-.badges .factbtn:hover { transform: translate(-1px, -1px); box-shadow: 2px 2px 0 var(--shadow-ink); }
-.fact-toast { position: fixed; right: 20px; bottom: 20px; z-index: 50; max-width: 340px; background: var(--surface); color: var(--ink); border: 2px solid var(--edge); border-radius: 14px;
-  box-shadow: 4px 4px 0 var(--sun); padding: 12px 36px 12px 14px; font-size: 14px; line-height: 1.45; animation: factIn .35s ease-out; }
-.fact-toast b { display: block; font-family: var(--font-display); font-size: 15px; margin-bottom: 3px; }
-.fact-toast p { margin: 0; }
-.fact-x { position: absolute; top: 6px; right: 8px; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 4px; }
-@keyframes factIn { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (max-width: 600px) { .fact-toast { left: 16px; right: 16px; bottom: 16px; max-width: none; } }
-@media (prefers-reduced-motion: reduce) { .fact-toast { animation: none; } }
+/* ---------- fun fact sticky note, floating next to the title ---------- */
+.top-main { display: grid; gap: 4px; min-width: 0; }
+.fact-note { position: relative; margin-top: 6px; }
+.fn-card { position: relative; display: block; width: 100%; text-align: left; font: inherit; cursor: pointer;
+  background: var(--sun); color: #14151C; border: 2px solid #14151C; border-radius: 4px 14px 14px 14px;
+  box-shadow: 4px 4px 0 var(--shadow-ink); padding: 14px 16px 12px; transform: rotate(-1.2deg);
+  transition: transform .18s ease, box-shadow .18s ease; }
+.fn-card::before { content: ""; position: absolute; top: -11px; left: 50%; width: 74px; height: 20px; transform: translateX(-50%) rotate(3deg);
+  background: rgba(255,255,255,.6); border: 1px solid rgba(20,21,28,.18); }
+.fn-card:hover { transform: rotate(0deg) translate(-2px, -2px); box-shadow: 6px 6px 0 var(--shadow-ink); }
+.fn-card:focus-visible { outline: 3px solid var(--cobalt); outline-offset: 3px; }
+.fn-front { display: flex; align-items: center; gap: 12px; }
+.fn-mascot { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--cobalt); color: #fff;
+  border: 2px solid #14151C; font-size: 22px; animation: fnWiggle 3.2s ease-in-out infinite; }
+.fn-txt b, .fn-back b { display: block; font-family: var(--font-display); font-size: 16px; font-weight: 800; letter-spacing: -.01em; }
+.fn-txt small, .fn-back small { display: block; font-size: 12px; font-weight: 600; opacity: .7; margin-top: 2px; }
+.fn-back { display: none; font-size: 14px; line-height: 1.45; }
+.fn-back b { margin-bottom: 4px; }
+.fn-back small { margin-top: 6px; }
+.fact-note.open .fn-front { display: none; }
+.fact-note.open .fn-back { display: block; }
+.fact-note.open .fn-card { background: var(--surface); color: var(--ink); border-color: var(--edge); box-shadow: 4px 4px 0 var(--sun); }
+.fact-note.open .fn-card::before { background: rgba(255,200,58,.75); }
+.fn-card.flip { animation: fnFlip .32s ease-in-out; }
+.fn-drift { position: absolute; right: 18px; top: -6px; width: 60px; height: 0; pointer-events: none; }
+.fn-drift i { position: absolute; bottom: 0; font-style: normal; font-size: 16px; color: var(--cobalt); opacity: 0; animation: fnDrift 6s ease-in infinite; }
+.fn-drift i:nth-child(2) { left: 22px; animation-delay: 2s; font-size: 19px; color: var(--coral); }
+.fn-drift i:nth-child(3) { left: 44px; animation-delay: 4s; color: var(--mint); }
+.fn-burst { position: absolute; left: 50%; top: 50%; font-style: normal; font-size: 20px; pointer-events: none; z-index: 5; animation: fnBurst 1.1s ease-out forwards; }
+@keyframes fnWiggle { 0%, 70%, 100% { transform: rotate(0); } 76% { transform: rotate(-14deg); } 84% { transform: rotate(12deg); } 92% { transform: rotate(-6deg); } }
+@keyframes fnDrift { 0% { transform: translateY(0) rotate(0); opacity: 0; } 15% { opacity: .75; } 100% { transform: translateY(-46px) rotate(18deg); opacity: 0; } }
+@keyframes fnFlip { 0% { transform: rotate(-1.2deg) scaleX(1); } 50% { transform: rotate(0) scaleX(0); } 100% { transform: rotate(-1.2deg) scaleX(1); } }
+@keyframes fnBurst { from { transform: translate(-50%, -50%) scale(.6); opacity: 1; } to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.2) rotate(var(--r)); opacity: 0; } }
+@keyframes fnPop { 0% { transform: rotate(-1.2deg) scale(1); } 40% { transform: rotate(2deg) scale(1.06); } 100% { transform: rotate(-1.2deg) scale(1); } }
+.fn-card.pop { animation: fnPop .6s ease-out; }
+@media (min-width: 900px) {
+  .top { display: flex; align-items: center; gap: 40px; }
+  .top-main { flex: 1; }
+  .fact-note { flex: 0 0 330px; margin: 8px 6px 0 0; }
+}
+@media (max-width: 899px) { .fn-drift { display: none; } .fact-note { margin-top: 12px; } .fn-card { transform: rotate(-.6deg); padding: 9px 12px 8px; }
+  .fn-mascot { width: 32px; height: 32px; font-size: 17px; } .fn-front { gap: 10px; } .fn-txt b { font-size: 15px; } .fn-txt small { margin-top: 0; } }
+@media (prefers-reduced-motion: reduce) { .fn-mascot, .fn-drift i, .fn-card.flip, .fn-card.pop, .fn-burst { animation: none; } .fn-burst { display: none; } .fn-card { transition: none; } }
 '''
 
 a_ = '{ pause(); setPos(0); }'
 assert js.count(a_) == 1
 js = js.replace(a_, "{ pause(); setPos(0); window.dispatchEvent(new Event('pieceend')); }", 1)
 js += r'''
-/* ---------- fun fact: once when you reach the end, and any time from the ♪ pill ---------- */
+/* ---------- fun fact sticky note: tap to flip; flips open once when you reach the end ---------- */
 if (D.fact) {
-  const toast = $('factToast'), KEY = 'pct-fact-' + location.pathname.split('/').pop();
-  let hideT = null;
-  const show = (head, auto) => {
-    $('factHead').textContent = head; $('factText').textContent = D.fact; toast.hidden = false;
-    clearTimeout(hideT); if (auto) hideT = setTimeout(() => { toast.hidden = true; }, 12000);
+  const note = $('factNote'), card = $('factCard'), KEY = 'pct-fact-' + location.pathname.split('/').pop();
+  $('factText').textContent = D.fact; note.hidden = false;
+  const burst = () => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const syms = ['♪', '♫', '♩', '♬', '✦'], cols = ['var(--cobalt)', 'var(--coral)', 'var(--mint)', 'var(--lilac)', '#14151C'];
+    for (let i = 0; i < 10; i++) {
+      const el = document.createElement('i'), a = (i / 10) * Math.PI * 2 + Math.random() * .5, d = 70 + Math.random() * 50;
+      el.className = 'fn-burst'; el.textContent = syms[i % syms.length]; el.style.color = cols[i % cols.length];
+      el.style.setProperty('--dx', Math.cos(a) * d + 'px'); el.style.setProperty('--dy', Math.sin(a) * d * .7 + 'px'); el.style.setProperty('--r', (Math.random() * 80 - 40) + 'deg');
+      note.appendChild(el); setTimeout(() => el.remove(), 1200);
+    }
   };
-  $('factX').onclick = () => { toast.hidden = true; clearTimeout(hideT); };
-  const pill = document.createElement('button');
-  pill.type = 'button'; pill.className = 'factbtn'; pill.textContent = '♪ Fun fact';
-  pill.onclick = () => toast.hidden ? show('♪ Fun fact', false) : (toast.hidden = true);
-  const addPill = () => { const b = $('songBadges'); if (b && !b.contains(pill)) b.appendChild(pill); };
-  addPill(); setTimeout(addPill, 0);
+  const setOpen = (open, head) => {
+    if (head) $('factHead').textContent = head;
+    if (note.classList.contains('open') === open) return;
+    card.classList.remove('flip'); void card.offsetWidth; card.classList.add('flip');
+    setTimeout(() => { note.classList.toggle('open', open); card.setAttribute('aria-expanded', open); }, 160);
+    if (open) setTimeout(burst, 180);
+  };
+  card.addEventListener('animationend', () => card.classList.remove('flip', 'pop'));
+  card.onclick = () => setOpen(!note.classList.contains('open'), '🎵 Fun fact');
   addEventListener('pieceend', () => {
     let seen = false; try { seen = localStorage.getItem(KEY) === '1'; localStorage.setItem(KEY, '1'); } catch (e) {}
-    if (!seen) show('🎹 You reached the end! Fun fact:', true);
+    if (seen) return;
+    if (note.classList.contains('open')) { $('factHead').textContent = '🎉 You made it to the end!'; card.classList.add('pop'); burst(); }
+    else setOpen(true, '🎉 You made it to the end! Fun fact:');
+    if (note.getBoundingClientRect().bottom < 0) note.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 }
 '''

@@ -674,22 +674,34 @@ requestAnimationFrame(draw);
 
 { const t = D.lib && D.lib.startTempo; if (t) { $('tempo').value = t; $('tempoVal').textContent = t; } }
 
-/* ---------- fun fact: once when you reach the end, and any time from the ♪ pill ---------- */
+/* ---------- fun fact sticky note: tap to flip; flips open once when you reach the end ---------- */
 if (D.fact) {
-  const toast = $('factToast'), KEY = 'pct-fact-' + location.pathname.split('/').pop();
-  let hideT = null;
-  const show = (head, auto) => {
-    $('factHead').textContent = head; $('factText').textContent = D.fact; toast.hidden = false;
-    clearTimeout(hideT); if (auto) hideT = setTimeout(() => { toast.hidden = true; }, 12000);
+  const note = $('factNote'), card = $('factCard'), KEY = 'pct-fact-' + location.pathname.split('/').pop();
+  $('factText').textContent = D.fact; note.hidden = false;
+  const burst = () => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const syms = ['♪', '♫', '♩', '♬', '✦'], cols = ['var(--cobalt)', 'var(--coral)', 'var(--mint)', 'var(--lilac)', '#14151C'];
+    for (let i = 0; i < 10; i++) {
+      const el = document.createElement('i'), a = (i / 10) * Math.PI * 2 + Math.random() * .5, d = 70 + Math.random() * 50;
+      el.className = 'fn-burst'; el.textContent = syms[i % syms.length]; el.style.color = cols[i % cols.length];
+      el.style.setProperty('--dx', Math.cos(a) * d + 'px'); el.style.setProperty('--dy', Math.sin(a) * d * .7 + 'px'); el.style.setProperty('--r', (Math.random() * 80 - 40) + 'deg');
+      note.appendChild(el); setTimeout(() => el.remove(), 1200);
+    }
   };
-  $('factX').onclick = () => { toast.hidden = true; clearTimeout(hideT); };
-  const pill = document.createElement('button');
-  pill.type = 'button'; pill.className = 'factbtn'; pill.textContent = '♪ Fun fact';
-  pill.onclick = () => toast.hidden ? show('♪ Fun fact', false) : (toast.hidden = true);
-  const addPill = () => { const b = $('songBadges'); if (b && !b.contains(pill)) b.appendChild(pill); };
-  addPill(); setTimeout(addPill, 0);
+  const setOpen = (open, head) => {
+    if (head) $('factHead').textContent = head;
+    if (note.classList.contains('open') === open) return;
+    card.classList.remove('flip'); void card.offsetWidth; card.classList.add('flip');
+    setTimeout(() => { note.classList.toggle('open', open); card.setAttribute('aria-expanded', open); }, 160);
+    if (open) setTimeout(burst, 180);
+  };
+  card.addEventListener('animationend', () => card.classList.remove('flip', 'pop'));
+  card.onclick = () => setOpen(!note.classList.contains('open'), '🎵 Fun fact');
   addEventListener('pieceend', () => {
     let seen = false; try { seen = localStorage.getItem(KEY) === '1'; localStorage.setItem(KEY, '1'); } catch (e) {}
-    if (!seen) show('🎹 You reached the end! Fun fact:', true);
+    if (seen) return;
+    if (note.classList.contains('open')) { $('factHead').textContent = '🎉 You made it to the end!'; card.classList.add('pop'); burst(); }
+    else setOpen(true, '🎉 You made it to the end! Fun fact:');
+    if (note.getBoundingClientRect().bottom < 0) note.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 }
