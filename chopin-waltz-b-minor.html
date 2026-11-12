@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Waltz in B minor, Op. 69 No. 2 · Piano Chord Trainer</title>
+<meta name="description" content="Play-along chord trainer for Frédéric Chopin's Waltz in B minor, Op. 69 No. 2. Falling notes, a chord for every bar and rolling sheet music.">
+<link rel="canonical" href="https://carloslam999.github.io/piano-chord-trainer/chopin-waltz-b-minor.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Piano Chord Trainer">
+<meta property="og:title" content="Waltz in B minor, Op. 69 No. 2 · Piano Chord Trainer">
+<meta property="og:description" content="Play-along chord trainer for Frédéric Chopin's Waltz in B minor, Op. 69 No. 2. Falling notes, a chord for every bar and rolling sheet music.">
+<meta property="og:url" content="https://carloslam999.github.io/piano-chord-trainer/chopin-waltz-b-minor.html">
+<meta property="og:image" content="https://carloslam999.github.io/piano-chord-trainer/assets/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0E0F1E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&family=Instrument+Sans:wght@400;500;600&family=Noto+Music&display=swap">
+<script data-goatcounter="https://pianochord.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+<link rel="stylesheet" href="assets/trainer.css">
+</head>
+<body>
+<script>try{if(localStorage.getItem('pct-theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
+<div class="wrap">
+  <nav class="sitebar"><a class="logo" href="./"><i aria-hidden="true"><b></b><b></b><b></b></i>Piano Chord Trainer</a><span class="sitebar-r"><button class="themebtn" id="themeBtn" type="button" aria-label="Switch to dark mode">☾ Dark</button><a class="back" href="./">← All songs</a></span></nav>
+  <header class="top">
+    <div class="eyebrow" id="songEyebrow"></div>
+    <h1 id="songTitle"></h1>
+    <div class="meta" id="songMeta"></div>
+    <div class="badges" id="songBadges"></div>
+  </header>
+
+  <section class="stage" aria-label="Player">
+    <div class="board card">
+      <div class="nowbar">
+        <div class="now-sym" id="nowSym">D♭</div>
+        <div class="now-rom" id="nowRom">I</div>
+        <div class="tones" id="nowTones"></div>
+        <div class="next" id="nextChord"></div>
+        <div class="counter">
+          <div class="pos" id="posText"></div>
+          <div class="meter" id="meter" aria-hidden="true"></div>
+        </div>
+        <div class="sec-tag" id="secTag" hidden></div>
+        <div class="repeat">
+          <label class="field" for="loopMode">Repeat
+            <select id="loopMode">
+              <option value="off">Off</option>
+              <option value="bar">This bar</option>
+              <option value="section">This section</option>
+              <option value="range">Bars from–to</option>
+            </select>
+          </label>
+          <span class="field" id="rangeBox" hidden>
+            <input type="number" id="loopFrom" min="1" max="72" value="1" aria-label="Loop from bar">to
+            <input type="number" id="loopTo" min="1" max="72" value="4" aria-label="Loop to bar">
+          </span>
+        </div>
+      </div>
+      <div class="ctrlbar">
+        <button class="btn primary" id="playBtn" type="button">▶ Play</button>
+        <button class="btn icon" id="restartBtn" type="button" aria-label="From the top" title="From the top">⟲</button>
+        <button class="btn icon" id="prevBar" type="button" aria-label="Previous bar" title="Previous bar">◀</button>
+        <button class="btn icon" id="nextBar" type="button" aria-label="Next bar" title="Next bar">▶</button>
+        <label class="field speed" for="tempo">Speed <b id="tempoVal">90</b>
+          <input type="range" id="tempo" min="36" max="200" value="90" step="2">
+        </label>
+        <label class="switch"><input type="checkbox" id="melOn" checked><span class="swatch" style="background:var(--melody)"></span>Melody</label>
+        <label class="switch"><input type="checkbox" id="accOn" checked><span class="swatch" style="background:var(--roll-chord)"></span>Chords</label>
+        <select id="style" aria-label="Chord style" title="Chord style">
+          <option value="block" selected>Block chords</option>
+          <option value="pattern">Bass, chord, chord</option>
+          <option value="orig">Original left hand</option>
+        </select>
+        <select id="melTone" aria-label="Melody sound" title="Melody sound">
+          <option value="warm" selected>Warm piano</option>
+          <option value="felt">Soft felt piano</option>
+          <option value="bright">Bright piano</option>
+        </select>
+        <label class="field" for="melVol">Volume
+          <input type="range" id="melVol" min="0" max="150" value="90" style="width:70px">
+        </label>
+      </div>
+    </div>
+
+    <div class="piano">
+      <details class="fold" id="foldChords" open>
+        <summary><span class="fold-title">Chords</span><span class="sec-tag" id="stripTitle"></span><span class="fold-note" id="stripNext"></span></summary>
+        <div class="strip-bars" id="stripBars"></div>
+      </details>
+      <details class="fold" id="foldSheet" open>
+        <summary><span class="fold-title">Sheet music</span><span class="fold-note">Drag to move · tap to jump · simplified score</span></summary>
+        <canvas id="sheet" aria-label="Scrolling sheet music. Drag sideways to move, tap to jump to a bar."></canvas><div class="scrub-tip" id="scrubTip" hidden></div>
+      </details>
+      <div class="piano-scroll" id="pianoScroll">
+        <div class="piano-inner">
+          <canvas id="roll" aria-label="Falling notes"></canvas>
+          <canvas id="keys" aria-label="Piano keyboard"></canvas>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--melody)"></span>Melody, right hand</span>
+        <span><span class="swatch" style="background:var(--roll-chord)"></span>Chord, left hand</span>
+        <span><span class="swatch" style="background:var(--bass)"></span>Bass note</span>
+        <span>Outlined keys = notes of the current chord</span>
+        <span class="kbd-hint"><kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> move a bar</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="map" aria-label="Chord map">
+    <div class="map-head">
+      <div class="eyebrow">Bar by bar</div>
+      <h2>The chord map</h2>
+      <p>The Chords bar above the piano shows the bars being played; this is the whole piece. Each card is one bar: <span id="countText"></span>. A chord's width shows how long it lasts. Tap a chord to hear it and jump there; tap “play” on a card to start from that bar.</p>
+    </div>
+    <div id="map"></div>
+  </section>
+
+  <section class="learn">
+    <div class="card">
+      <h2>How to practise it</h2>
+      <ol id="practice"></ol>
+    </div>
+    <div class="card">
+      <h2>Reading the symbols</h2>
+      <dl class="glossary" id="glossary"></dl>
+    </div>
+  </section>
+
+  <footer id="credits"></footer>
+</div>
+<script src="songs/chopin-waltz-b-minor.js"></script>
+<script src="assets/trainer.js"></script>
+</body>
+</html>

@@ -19,6 +19,10 @@ Live site: https://carloslam999.github.io/piano-chord-trainer/
 | Nocturne No. 5 in B♭ major, H. 37 | Field | Intermediate |
 | Prelude in A major, Op. 28 No. 7 | Chopin | Beginner |
 | Minuet in G minor, BWV Anh. 115 | Bach (now credited to Petzold) | Beginner |
+| Minuet in G major, BWV Anh. 114 | Bach (now credited to Petzold) | Beginner |
+| Canon in D | Pachelbel | Beginner |
+| Waltz in B minor, Op. 69 No. 2 | Chopin | Intermediate |
+| In the Hall of the Mountain King | Grieg | Intermediate |
 | The Entertainer | Joplin | Intermediate |
 | Rondo alla Turca, K. 331 | Mozart | Intermediate |
 | Sonata in C, K. 545, 1st movement | Mozart | Intermediate |

@@ -307,6 +307,14 @@ def main():
         med = ps[len(ps) // 2]
         want = 'G' if (cur == 'F' and med >= 60) or (cur == 'G' and med >= 55) else 'F'
         if want != cur: clefs.append([b['start'], 1, want]); cur = want
+    cur = 'G'   # right hand: switch to bass clef only for passages that sit well below middle C
+    for b in bars:
+        ps = sorted(p for t, d, p, st in hn if st == 'u' and b['start'] <= t < b['start'] + b['len'])
+        if not ps: continue
+        med = ps[len(ps) // 2]
+        want = 'F' if (cur == 'G' and med < 50) or (cur == 'F' and med < 57) else 'G'
+        if want != cur: clefs.append([b['start'], 0, want]); cur = want
+    clefs.sort()
     keys = [list(k) for k in sorted({(round(q(tk)), s_) for tk, s_, _ in meta['key']})] or [[0, 0]]
     keys = [k for i, k in enumerate(keys) if i == 0 or k[1] != keys[i - 1][1]]
     keys[0][0] = 0
