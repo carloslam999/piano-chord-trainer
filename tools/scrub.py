@@ -90,3 +90,11 @@ body = body.replace(_t, 'id="tempo" min="36" max="200"', 1)
 js += r'''
 { const t = D.lib && D.lib.startTempo; if (t) { $('tempo').value = t; $('tempoVal').textContent = t; } }
 '''
+# practice speeds, roughly 60-70% of a normal performance (eighth notes per minute)
+START_TEMPO = {'gymnopedie-1': 120, 'gnossienne-1': 100, 'fur-elise': 100, 'moonlight-sonata-1': 140, 'bach-prelude-in-c': 100,
+               'chopin-prelude-e-minor': 100, 'traumerei': 110, 'old-french-song': 120, 'field-nocturne-5': 110, 'the-entertainer': 110,
+               'rondo-alla-turca': 140, 'mozart-sonata-k545': 140, 'arabesque-1': 100, 'chopin-prelude-a-major': 120}
+for s in SONGS:
+    if s['id'] in START_TEMPO and isinstance(s.get('lib'), dict):
+        s['lib'].setdefault('startTempo', START_TEMPO[s['id']])
+    assert s['id'] not in START_TEMPO or s['data']['lib'].get('startTempo')
