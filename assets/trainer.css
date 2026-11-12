@@ -284,11 +284,20 @@ kbd { border-color: var(--edge); }
 @keyframes fnBurst { from { transform: translate(-50%, -50%) scale(.6); opacity: 1; } to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.2) rotate(var(--r)); opacity: 0; } }
 @keyframes fnPop { 0% { transform: rotate(-1.2deg) scale(1); } 40% { transform: rotate(2deg) scale(1.06); } 100% { transform: rotate(-1.2deg) scale(1); } }
 .fn-card.pop { animation: fnPop .6s ease-out; }
+/* open note: compact text and a corner × instead of a "fold away" line, so it stays about as tall as the title block */
+.fact-note.open .fn-card { padding: 9px 30px 9px 14px; }
+.fact-note.open .fn-card::after { content: "×"; position: absolute; top: 3px; right: 9px; font-size: 19px; line-height: 1; color: var(--muted); }
+.fn-back { font-size: 13px; line-height: 1.4; }
+.fn-back b { font-size: 14px; margin-bottom: 2px; }
+.fn-back small { display: none; }
+/* computer: the note floats beside the title and never changes the header's height */
 @media (min-width: 900px) {
-  .top { display: flex; align-items: center; gap: 40px; }
-  .top-main { flex: 1; }
-  .fact-note { flex: 0 0 330px; margin: 8px 6px 0 0; }
+  .top { position: relative; padding-right: 440px; }
+  .fact-note { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 400px; margin: 0; }
 }
+/* phone: the closed note keeps its place; the open note drops down over the player like a pop-up */
 @media (max-width: 899px) { .fn-drift { display: none; } .fact-note { margin-top: 12px; } .fn-card { transform: rotate(-.6deg); padding: 9px 12px 8px; }
-  .fn-mascot { width: 32px; height: 32px; font-size: 17px; } .fn-front { gap: 10px; } .fn-txt b { font-size: 15px; } .fn-txt small { margin-top: 0; } }
+  .fn-mascot { width: 32px; height: 32px; font-size: 17px; } .fn-front { gap: 10px; } .fn-txt b { font-size: 15px; } .fn-txt small { margin-top: 0; }
+  .fact-note.open { z-index: 30; }
+  .fact-note.open .fn-card { position: absolute; top: 0; left: 0; right: 0; width: auto; z-index: 30; box-shadow: 4px 4px 0 var(--sun), 0 10px 30px rgba(20,21,28,.25); } }
 @media (prefers-reduced-motion: reduce) { .fn-mascot, .fn-drift i, .fn-card.flip, .fn-card.pop, .fn-burst { animation: none; } .fn-burst { display: none; } .fn-card { transition: none; } }

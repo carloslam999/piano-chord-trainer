@@ -692,7 +692,10 @@ if (D.fact) {
     if (head) $('factHead').textContent = head;
     if (note.classList.contains('open') === open) return;
     card.classList.remove('flip'); void card.offsetWidth; card.classList.add('flip');
-    setTimeout(() => { note.classList.toggle('open', open); card.setAttribute('aria-expanded', open); }, 160);
+    setTimeout(() => {
+      if (open && matchMedia('(max-width: 899px)').matches) note.style.height = note.offsetHeight + 'px'; else note.style.height = '';   // hold the closed size so nothing below moves
+      note.classList.toggle('open', open); card.setAttribute('aria-expanded', open);
+    }, 160);
     if (open) setTimeout(burst, 180);
   };
   card.addEventListener('animationend', () => card.classList.remove('flip', 'pop'));
