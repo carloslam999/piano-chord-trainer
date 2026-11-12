@@ -243,3 +243,8 @@ h1, h2, h3 { font-weight: 800; letter-spacing: -.02em; }
 footer a, .glossary a { color: var(--chord); }
 kbd { border-color: var(--edge); }
 @media (prefers-reduced-motion: reduce) { .btn, .back, .themebtn { transition: none; } }
+
+#foldSheet { position: relative; }
+#sheet { cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+#sheet.dragging { cursor: grabbing; }
+.scrub-tip { position: absolute; top: 44px; transform: translateX(-50%); background: var(--ink); color: var(--bg); font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; pointer-events: none; white-space: nowrap; box-shadow: 2px 2px 0 var(--sun); }

@@ -101,3 +101,5 @@ for s in SONGS:
     s['data']['lib'] = s['lib']
 for s in SONGS:
     s['defaultStyle'] = 'orig'   # every piece opens with the composer's own left hand
+
+exec(open(f'{SP}/scrub.py').read())
