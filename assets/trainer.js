@@ -671,3 +671,5 @@ requestAnimationFrame(draw);
     clearTimeout(tip._t); tip._t = setTimeout(() => { tip.hidden = true; }, 700);
   }, { passive: false });
 }
+
+{ const t = D.lib && D.lib.startTempo; if (t) { $('tempo').value = t; $('tempoVal').textContent = t; } }

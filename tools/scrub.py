@@ -82,3 +82,11 @@ assert _a in js and js.count('initAudio(); ac.resume();') >= 3
 js = js.replace(_a, "  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}\n" + _a, 1)
 js = js.replace('initAudio(); ac.resume();', 'initAudio(); iosAudioUnlock(); ac.resume();')
 js = js.replace('/* ---------- audio ---------- */', '/* ---------- audio ---------- */\n' + IOS_UNLOCK, 1)
+
+# ---------- per-piece starting speed (eighth notes per minute), e.g. faster for simple dances ----------
+_t = 'id="tempo" min="36" max="150"'
+assert body.count(_t) == 1
+body = body.replace(_t, 'id="tempo" min="36" max="200"', 1)
+js += r'''
+{ const t = D.lib && D.lib.startTempo; if (t) { $('tempo').value = t; $('tempoVal').textContent = t; } }
+'''

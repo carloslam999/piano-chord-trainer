@@ -156,7 +156,7 @@ PIECES = [
                '<b>Play it softly and slowly.</b> It is over in under a minute.']),
     dict(id='bach-minuet-g-minor', title='Minuet in G minor, BWV Anh. 115', titleHtml='Minuet in <em>G minor</em>', composer='Johann Sebastian Bach',
          eyebrow='Anna Magdalena Bach Notebook, BWV Anh. 115, 1725 · now credited to Christian Petzold', tempo='Moderato', difficulty=1, era='Baroque', mood='Melancholy', minutes=2, defaultStyle='orig',
-         leftHandName='Original left hand', repeatsOut=False,
+         leftHandName='Original left hand', repeatsOut=False, startTempo=140,
          blurb='The darker twin of the famous Minuet in G major, from the same notebook. One melody line over a walking bass, so it is a perfect first Baroque piece.',
          symmap={'Am': ('A°', 'ii°'), 'Am/C': ('A°/C', 'ii°⁶'), 'Cm7/G': ('Gm', 'i'), 'G7/B': ('G7/B', 'V⁷/iv'), 'F7/C': ('F7/C', 'V⁷/III'),
                  'C7/G': ('C7/G', 'V⁷/VII'), 'G/B': ('G/B', 'V/iv')},
