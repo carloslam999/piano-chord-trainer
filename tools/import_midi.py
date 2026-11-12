@@ -241,6 +241,8 @@ def main():
     by_tr = defaultdict(list)
     for t, d, p, ti in notes: by_tr[ti].append(p)
     upper_tracks = {ti for ti, ps in by_tr.items() if sum(ps) / len(ps) >= 60}
+    if len(by_tr) == 2:   # two staves: the higher one is the right hand, even if both sit high
+        upper_tracks = {max(by_tr, key=lambda ti: sum(by_tr[ti]) / len(by_tr[ti]))}
     if len(by_tr) == 1 or not upper_tracks or len(upper_tracks) == len(by_tr):
         split = lambda p, ti: 'u' if p >= 60 else 'l'
     else:
@@ -256,15 +258,23 @@ def main():
     key = (sf, bool(mi))
     if kov: key = (sf, kov == 'minor')
     end = max(t + d for t, d, p, st in hn)
-    nb = 1 + int((end - pickup - 1e-6) // bar_len) + (1 if pickup else 0)
+    # key changes (the first key may be overridden: --key=major/minor)
+    kev = []
+    for tk, s, m_ in sorted(meta['key']):
+        k = (s, bool(m_))
+        if not kev: k = key
+        if not kev or kev[-1][1] != k: kev.append((q(tk), k))
+    if not kev: kev = [(0, key)]
+    key_at = lambda t: [k for kt, k in kev if kt <= t + 1e-6][-1]
+    # time-signature changes give bars of different lengths
+    tev = sorted({(q(tk), n_, d_) for tk, n_, d_ in meta['time']}) or [(0, num, den)]
+    bar_at = lambda t: [n_ * 8 / d_ for tt, n_, d_ in tev if tt <= t + 1e-6][-1]
+    starts, pos = [], pickup
+    while pos < end - 1e-6:
+        starts.append((pos, bar_at(pos))); pos += bar_at(pos)
     bars, CH = [], {}
-    for n in range(1, nb + 1):
-        if pickup and n == 1: start, ln = 0, pickup
-        else: start = pickup + (n - 1 - (1 if pickup else 0)) * bar_len; ln = bar_len
-        if start >= end - 1e-6: break
-        if pickup and n == 1:
-            # the pickup belongs to bar 1 in the trainer: merge it into the first full bar
-            continue
+    for start, ln in starts:
+        key = key_at(start)
         has_lh = any(st == 'l' and min(start + ln, t + d) - max(start, t) > 1e-6 for t, d, p, st in hn)
         if not has_lh and bars:   # melody alone: keep the chord that is already sounding
             last = bars[-1]['chords'][-1]
@@ -286,8 +296,9 @@ def main():
             c[2] = round(c[2], 3); c[3] = round(c[3], 3)
     # sheet: spellings, voices, clef changes for the left hand
     sh = []
+    key = kev[0][1]
     for t, d, p, st in hn:
-        ds, a = spell_midi(p, *key)
+        ds, a = spell_midi(p, *key_at(t))
         sh.append([t, round(d, 3), 0 if st == 'u' else 1, ds, a, 0 if st == 'u' else 2, p])
     clefs, cur = [], 'F'
     for b in bars:
@@ -296,7 +307,7 @@ def main():
         med = ps[len(ps) // 2]
         want = 'G' if (cur == 'F' and med >= 60) or (cur == 'G' and med >= 55) else 'F'
         if want != cur: clefs.append([b['start'], 1, want]); cur = want
-    keys = [[round(q(tk)), s] for tk, s, _ in meta['key']] or [[0, 0]]
+    keys = [list(k) for k in sorted({(round(q(tk)), s_) for tk, s_, _ in meta['key']})] or [[0, 0]]
     keys = [k for i, k in enumerate(keys) if i == 0 or k[1] != keys[i - 1][1]]
     keys[0][0] = 0
     group = lambda st: [[t, d, sorted(ms)] for (t, d), ms in sorted(_grp(st).items())]
