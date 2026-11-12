@@ -182,7 +182,7 @@ function tick() {
     if (loop && horizon >= loop[1]) {
       anchorCtx = anchorCtx + (loop[1] - anchorPos) * spe(); anchorPos = loop[0]; schedPos = loop[0]; seekIdx(loop[0]);
     } else if (!loop && schedPos >= D.end) {
-      if (ac.currentTime > anchorCtx + (D.end - anchorPos) * spe() + 1.5) { pause(); setPos(0); }
+      if (ac.currentTime > anchorCtx + (D.end - anchorPos) * spe() + 1.5) { pause(); setPos(0); window.dispatchEvent(new Event('pieceend')); }
       break;
     }
   }
@@ -673,3 +673,23 @@ requestAnimationFrame(draw);
 }
 
 { const t = D.lib && D.lib.startTempo; if (t) { $('tempo').value = t; $('tempoVal').textContent = t; } }
+
+/* ---------- fun fact: once when you reach the end, and any time from the ♪ pill ---------- */
+if (D.fact) {
+  const toast = $('factToast'), KEY = 'pct-fact-' + location.pathname.split('/').pop();
+  let hideT = null;
+  const show = (head, auto) => {
+    $('factHead').textContent = head; $('factText').textContent = D.fact; toast.hidden = false;
+    clearTimeout(hideT); if (auto) hideT = setTimeout(() => { toast.hidden = true; }, 12000);
+  };
+  $('factX').onclick = () => { toast.hidden = true; clearTimeout(hideT); };
+  const pill = document.createElement('button');
+  pill.type = 'button'; pill.className = 'factbtn'; pill.textContent = '♪ Fun fact';
+  pill.onclick = () => toast.hidden ? show('♪ Fun fact', false) : (toast.hidden = true);
+  const addPill = () => { const b = $('songBadges'); if (b && !b.contains(pill)) b.appendChild(pill); };
+  addPill(); setTimeout(addPill, 0);
+  addEventListener('pieceend', () => {
+    let seen = false; try { seen = localStorage.getItem(KEY) === '1'; localStorage.setItem(KEY, '1'); } catch (e) {}
+    if (!seen) show('🎹 You reached the end! Fun fact:', true);
+  });
+}

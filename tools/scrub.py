@@ -98,3 +98,5 @@ for s in SONGS:
     if s['id'] in START_TEMPO and isinstance(s.get('lib'), dict):
         s['lib'].setdefault('startTempo', START_TEMPO[s['id']])
     assert s['id'] not in START_TEMPO or s['data']['lib'].get('startTempo')
+
+exec(open(f'{SP}/funfact.py').read())

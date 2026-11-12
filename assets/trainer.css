@@ -248,3 +248,14 @@ kbd { border-color: var(--edge); }
 #sheet { cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 #sheet.dragging { cursor: grabbing; }
 .scrub-tip { position: absolute; top: 44px; transform: translateX(-50%); background: var(--ink); color: var(--bg); font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; pointer-events: none; white-space: nowrap; box-shadow: 2px 2px 0 var(--sun); }
+
+.badges .factbtn { font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--sun); color: #14151C; border-color: #14151C; }
+.badges .factbtn:hover { transform: translate(-1px, -1px); box-shadow: 2px 2px 0 var(--shadow-ink); }
+.fact-toast { position: fixed; right: 20px; bottom: 20px; z-index: 50; max-width: 340px; background: var(--surface); color: var(--ink); border: 2px solid var(--edge); border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--sun); padding: 12px 36px 12px 14px; font-size: 14px; line-height: 1.45; animation: factIn .35s ease-out; }
+.fact-toast b { display: block; font-family: var(--font-display); font-size: 15px; margin-bottom: 3px; }
+.fact-toast p { margin: 0; }
+.fact-x { position: absolute; top: 6px; right: 8px; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 4px; }
+@keyframes factIn { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 600px) { .fact-toast { left: 16px; right: 16px; bottom: 16px; max-width: none; } }
+@media (prefers-reduced-motion: reduce) { .fact-toast { animation: none; } }
